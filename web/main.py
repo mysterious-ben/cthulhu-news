@@ -354,16 +354,24 @@ def load_external_news(from_: Optional[datetime], to_: Optional[datetime], limit
 async def get_news() -> list[dict]:
     """Get news from the local db"""
 
+    start = datetime.now()
+    logger.debug("getting all news from the local db...")
     async with aiosqlite.connect(db_path) as conn:
         async with conn.execute(
             """SELECT * FROM news ORDER BY published_at DESC""",
         ) as c:
             records = await c.fetchall()
             columns = [x[0] for x in c.description]
+    logger.debug("fetched all news from the local db")
     news_articles = [{k: v for k, v in zip(columns, rec)} for rec in records]
     for article in news_articles:
         for k in ("meta", "reactions"):
             article[k] = json.loads(article[k])
+    elapsed = (datetime.now() - start).total_seconds()
+    logger.info(
+        "fetched and processed all news from the local db "
+        f"n={len(news_articles)} elapsed={elapsed:.2f}s"
+    )
     return news_articles
 
 
@@ -380,6 +388,8 @@ async def count_news() -> int:
 
 @app.get("/", response_class=HTMLResponse)
 async def read_news(request: Request):
+    start = datetime.now()
+    logger.debug("loading the news page...")
     try:
         news_articles = await get_news()
         if len(news_articles) > 0:
@@ -401,9 +411,13 @@ async def read_news(request: Request):
     except httpx.RequestError as e:
         raise HTTPException(status_code=500, detail="Error while collecting news articles") from e
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "news_page.html", {"request": request, "news_articles": news_articles}
     )
+
+    elapsed = (datetime.now() - start).total_seconds()
+    logger.info(f"prepared the news page elapsed={elapsed:.2f}s")
+    return response
 
 
 @app.post("/react/{reaction}/{article_id}")
