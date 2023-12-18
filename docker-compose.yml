@@ -30,13 +30,37 @@ services:
         max-size: "50m"
         max-file: "2"
 
-  etl:
+  web-etl:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    image: web-etl:latest
+    container_name: cthulhu-web-etl
+    init: true
+    volumes:
+      - ./web/logs:/app/logs
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MONGO_HOST=mongo
+    env_file:
+      - .env
+    entrypoint: ["python"]
+    command: ["-m", "main"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+  db-etl:
     build:
       context: ./db
       dockerfile: Dockerfile
     restart: unless-stopped
-    image: etl:latest
-    container_name: cthulhu-etl
+    image: db-etl:latest
+    container_name: cthulhu-db-etl
     init: true
     volumes:
       - ./db/logs:/app/logs
