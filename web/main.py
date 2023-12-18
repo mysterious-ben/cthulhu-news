@@ -53,7 +53,7 @@ DEFAULT_NEWS_REACTIONS = {
 
 init_loguru(file_path="logs/log.log")
 
-app = FastAPI()
+app = FastAPI(title="Cthulhu-News")
 app.mount(
     "/static",
     StaticFiles(directory=Path(__file__).parent.absolute() / "static"),
@@ -399,7 +399,7 @@ async def read_news(request: Request):
                         ]["pretty"]
 
     except httpx.RequestError as e:
-        raise HTTPException(status_code=404, detail="News articles not found") from e
+        raise HTTPException(status_code=500, detail="Error while collecting news articles") from e
 
     return templates.TemplateResponse(
         "news_page.html", {"request": request, "news_articles": news_articles}
