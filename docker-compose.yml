@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  web:
+  web-page:
     build:
       context: ./web
       dockerfile: Dockerfile
     restart: unless-stopped
-    image: web:latest
-    container_name: cthulhu-web
+    image: web-page:latest
+    container_name: cthulhu-web-page
     init: true
     ports:
       - "8000:8000"
@@ -15,6 +15,7 @@ services:
       - 8000
     volumes:
       - ./web/logs:/app/logs
+      - ./web/data:/app/data
     environment:
       - PUID=1000
       - PGID=1000
@@ -40,6 +41,7 @@ services:
     init: true
     volumes:
       - ./web/logs:/app/logs
+      - ./web/data:/app/data
     environment:
       - PUID=1000
       - PGID=1000
