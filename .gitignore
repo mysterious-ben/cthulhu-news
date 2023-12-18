@@ -1,0 +1,40 @@
+# System
+*.swp
+.DS_Store
+
+# IDE
+.idea
+.vscode
+
+# Python version and packages
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.pytype/
+.ipynb_checkpoints/
+
+# App generated files
+web/data/*
+!web/data/.gitkeep
+db/data/*
+!db/data/.gitkeep
+*.db
+*.log
+
+# Private files 
+db/secrets/*
+!db/secrets/.gitkeep
+.env
+secret_*
+secret-*
+
+# Temporary files
+Untitled*
+temp

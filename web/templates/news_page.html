@@ -1,0 +1,62 @@
+<!-- templates/news_page.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cthulhu News</title>
+    <link
+        rel="stylesheet"
+        type="text/css"
+        href="/static/styles.css"
+    >
+    <link
+        id="favicon"
+        rel="icon"
+        type="image/x-icon"
+        href="static/images/cobra.svg"
+    >
+    <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
+</head>
+
+<body>
+    <div class="news-area">
+        <h1 class="website-name">Cthulhu News</h1>
+        {% for article in news_articles %}
+        <div
+            class="news-box"
+            id="article-{{ article['id'] }}"
+        >
+            <!-- <h2>{{ article['title'] }}</h2> -->
+            <h2 class="main-title">{{ article['title'] }}</h2>
+            <p>{{ article['original_text'] }}</p>
+            <div class="news-source">
+                (reported by <a href="{{ article['url'] }}">{{ article['media_source_name'] }}</a> on {{ article['published_at'][:10] }})
+            </div>
+            <!-- <h3 class="facade-sign">But this is just the facade...</h3> -->
+            <h2 class="facade-sign">But this is just the facade</h2>
+            <img src="data:image/jpeg;base64,{{ article['cthulhu_image'] | safe }}" class="news-image">
+            <h2 class="truth-title">{{ article['cthulhu_new_title'] }}</h2>
+            <p class="truth-text">{{ article['cthulhu_truth'] }}</p>
+            <div class="news-source">
+                (reported by ███ ██████ on {{ article['published_at'][:10] }})
+            </div>
+            <div class="news-reactions">
+                {% for reaction, reaction_items in article['reactions'].items() %}
+                <button
+                    class="button"
+                    hx-target="#{{ reaction }}-count-{{ article['id'] }}"
+                    hx-swap="outerHTML"
+                    hx-post="/react/{{ reaction }}/{{ article['id'] }}"
+                >{{ reaction_items['pretty'] }}: <span id="{{ reaction }}-count-{{ article['id'] }}">{{
+                        reaction_items['value'] }}</span>
+                </button>
+                {% endfor %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+</body>
+
+</html>

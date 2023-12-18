@@ -1,0 +1,216 @@
+@font-face {
+    font-family: 'AncientMedium';
+    src: url('fonts/AncientMedium.ttf') format('truetype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'CloisterBlack';
+    src: url('fonts/CloisterBlack.ttf') format('truetype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'OldLondon';
+    src: url('fonts/OldLondon.ttf') format('truetype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'BlackChancery';
+    src: url('fonts/BlackChancery.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'GregorianFLF';
+    src: url('fonts/GregorianFLF.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Report1942';
+    src: url('fonts/Report1942.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'MomsTypewriter';
+    src: url('fonts/MomsTypewriter.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'OldNewspaperTypes';
+    src: url('fonts/OldNewspaperTypes.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'JMHTypewriter';
+    src: url('fonts/JMHTypewriter.ttf') format('truetype'), url('fonts/JMHTypewriter.otf') format('opentype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'JMHTypewriter';
+    src: url('fonts/JMHTypewriter-Bold.ttf') format('truetype'), url('fonts/JMHTypewriter-Bold.otf') format('opentype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'JMHTypewriter';
+    src: url('fonts/JMHTypewriter-Thin.ttf') format('truetype'), url('fonts/JMHTypewriter-Thin.otf') format('opentype');
+    font-weight: thin;
+}
+
+:root {
+    /* --truth-color:rgba(234, 234, 234, 0.878); */
+    --main-font: 'JMHTypewriter';
+    --main-title-font: 'OldNewspaperTypes';
+    --truth-font: 'JMHTypewriter';
+    --truth-title-font: 'OldLondon';
+    --truth-title-font-alt: 'MomsTypewriter';
+    --main-font-color: rgb(255, 255, 255);
+    --deemed-font-color: rgba(255, 255, 255, 0.9);
+    /* --truth-font-color: rgb(255, 255, 255); */
+    --main-background-color: rgb(32, 38, 46);
+    --darker-background-color: rgb(23, 29, 34);
+    --lighter-background-color: rgb(50, 61, 72);
+    --news-border-color: rgb(100, 100, 100);
+    --image-border-color: rgb(11, 11, 11);
+}
+
+body {
+    background-color: var(--main-background-color);
+    color: var(--main-font-color);
+    font-family: var(--main-font), serif;
+    margin: 0;
+    padding: 20px;
+    max-width: 1000px;
+    margin:0 auto 0 auto;
+    justify-content:center;
+}
+
+h1, h2, h3, h4 {
+    text-align: center;
+}
+
+.website-name {
+    font-family: var(--truth-title-font), serif;
+    font-size: 3rem;
+    text-align: center;
+}
+
+.main-title {
+    font-family: var(--main-title-font), serif;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.truth-title {
+    font-family: var(--truth-title-font), serif;
+    font-size: 1.7rem;
+    /* font-family: var(--truth-title-font-alt), serif;
+    font-size: 1.2rem; */
+    text-align: center;
+    text-shadow:
+    -1px -1px 0 #000,
+    0   -1px 0 #000,
+    1px -1px 0 #000,
+    1px  0   0 #000,
+    1px  1px 0 #000,
+    0    1px 0 #000,
+   -1px  1px 0 #000,
+   -1px  0   0 #000;
+}
+
+.facade-sign {
+    /* color: var(--truth-color); */
+    margin-bottom: 10px;
+    font-family: var(--truth-title-font), serif;
+    font-size: 2.5rem;
+    text-align: center;
+    text-shadow:
+    -1px -1px 0 #000,
+     0   -1px 0 #000,
+     1px -1px 0 #000,
+     1px  0   0 #000,
+     1px  1px 0 #000,
+     0    1px 0 #000,
+    -1px  1px 0 #000,
+    -1px  0   0 #000;
+}
+
+.news-box {
+    /* background-color: #444; */
+    border: 1px solid var(--news-border-color);
+    border-radius: 5px;
+    padding: 1.5rem;
+    margin-bottom: 10px;
+    text-align: justify;
+}
+
+.news-source {
+    color: var(--deemed-font-color);
+    font-weight: thin;
+    font-size: 0.8rem;
+    text-align: right;
+    padding-right: 0.1rem;
+}
+
+.truth-text {
+    /* color: var(--truth-color); */
+    /* -webkit-text-stroke: 1px #111; */
+    font-family: var(--truth-font), serif;
+    text-shadow:
+    -1px -1px 0 #000,
+     0   -1px 0 #000,
+     1px -1px 0 #000,
+     1px  0   0 #000,
+     1px  1px 0 #000,
+     0    1px 0 #000,
+    -1px  1px 0 #000,
+    -1px  0   0 #000;
+}
+
+.news-image {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 70%;
+    border: 1px solid var(--image-border-color);
+    border-radius: 5px;
+    /* padding: 0.5rem; */
+}
+
+.news-reactions {
+    text-align: center;
+}
+
+a:link {
+    color:rgb(167, 170, 254) !important;
+}
+
+a:visited {
+    color:rgb(189, 191, 255, 0.7) !important;
+}
+
+a:hover, a:active {
+    color: rgb(234, 235, 255) !important;
+}
+
+button {
+    background-color: var(--darker-background-color);
+    font-family: var(--truth-font), serif;
+    color: var(--main-font-color);
+    /* font-weight: bold; */
+    border: 1px solid var(--news-border-color);
+    padding: 5px 10px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: var(--lighter-background-color);
+}
