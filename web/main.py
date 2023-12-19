@@ -1,6 +1,7 @@
 import base64
 import itertools
 import json
+import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -43,20 +44,21 @@ CTHULHU_DEFAULT_FIRST_TIMESTAMP = parser.parse(env.str("CTHULHU_DEFAULT_FIRST_TI
 CTHULHU_DALLE_MODEL = "dall-e-3"
 CTHULHU_IMAGE_DIR = Path("data", "images")
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
-logger.debug(f"CTHULHU_IMAGE_DIR={CTHULHU_IMAGE_DIR.absolute()}")
-
+HTML_STATIC_DIR = Path(__file__).parent / "static"
 DEFAULT_NEWS_REACTIONS = {
     "like": {"pretty": "Truth", "value": 0},
     "dislike": {"pretty": "Lie", "value": 0},
 }
 
-
 init_loguru(file_path="logs/log.log")
+logger.debug(f"CTHULHU_IMAGE_DIR={CTHULHU_IMAGE_DIR.absolute()}")
+logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
+
 
 app = FastAPI(title="Cthulhu-News")
 app.mount(
     "/static",
-    StaticFiles(directory=Path(__file__).parent.absolute() / "static"),
+    StaticFiles(directory=HTML_STATIC_DIR.absolute()),
     name="static",
 )
 
@@ -81,8 +83,7 @@ def init_local_news_db():
                 original_text TEXT NOT NULL,
                 cthulhu_new_title TEXT NOT NULL,
                 cthulhu_truth TEXT NOT NULL,
-                cthulhu_image BLOB,
-                meta JSON,
+                meta JSON NOT NULL,
                 reactions JSON DEFAULT '{json.dumps(DEFAULT_NEWS_REACTIONS)}',
                 UNIQUE(url),
                 UNIQUE(title)
@@ -248,6 +249,10 @@ def _add_cthulhu_news(docs: list[dict]) -> None:
     logger.info(f"generated gpt cthulhu news count={len(docs)}")
 
 
+def str_to_filename(string: str) -> str:
+    return "".join(x for x in string.lower().replace(" ", "_") if x.isalnum() or x == "_")
+
+
 def _add_cthulhu_images(docs: list[dict]) -> None:
     client = OpenAI(api_key=OPENAI_API_KEY)
     for doc in docs:
@@ -257,7 +262,7 @@ def _add_cthulhu_images(docs: list[dict]) -> None:
         dalle_prompt += doc["gpt_summary"]
         dalle_prompt += " " + doc["cthulhu_truth"]
         title: str = doc["cthulhu_new_title"]
-        image_name = "".join(x for x in title.lower() if x.isalnum())
+        image_name = str_to_filename(title)
 
         response = client.images.generate(
             model=CTHULHU_DALLE_MODEL,
@@ -273,14 +278,24 @@ def _add_cthulhu_images(docs: list[dict]) -> None:
         assert img_json is not None
         img_bytes = base64.b64decode(img_json)
 
-        if revised_prompt is not None:
-            with open(CTHULHU_IMAGE_DIR / f"{image_name}.txt", "wt") as f:
-                f.write(revised_prompt)
-
-        with open(CTHULHU_IMAGE_DIR / f"{image_name}.png", "wb") as f:
+        image_filename = f"{image_name}.png"
+        with open(CTHULHU_IMAGE_DIR / image_filename, "wb") as f:
             f.write(img_bytes)
 
-        doc["cthulhu_image"] = img_bytes
+        # doc["cthulhu_image"] = img_bytes
+        doc["meta"].update(
+            {
+                "cthulhu_image_prompt": dalle_prompt,
+                "cthulhu_image_filename": image_filename,
+                "cthulhu_image_dir": str(CTHULHU_IMAGE_DIR),
+            }
+        )
+        if revised_prompt is not None:
+            doc["meta"].update(
+                {
+                    "cthulhu_image_revised_prompt": revised_prompt,
+                }
+            )
 
     logger.info(f"generated gpt cthulhu images count={len(docs)}")
 
@@ -297,7 +312,6 @@ def _upload_articles(docs: list[dict]) -> None:
         ("gpt_summary", "original_text", "?"),
         ("cthulhu_new_title", "cthulhu_new_title", "?"),
         ("cthulhu_truth", "cthulhu_truth", "?"),
-        ("cthulhu_image", "cthulhu_image", "?"),
         ("meta", "meta", "json(?)"),
     ]
     expected_keys = [k[0] for k in expected_entries]
@@ -390,6 +404,7 @@ async def count_news() -> int:
 async def read_news(request: Request):
     start = datetime.now()
     logger.debug("loading the news page...")
+    static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
     try:
         news_articles = await get_news()
         if len(news_articles) > 0:
@@ -397,10 +412,15 @@ async def read_news(request: Request):
 
         # Make data HTML-friendly
         for article in news_articles:
-            if article["cthulhu_image"] is not None:
-                article["cthulhu_image"] = base64.b64encode(article["cthulhu_image"]).decode(
-                    "utf-8"
-                )
+            if "cthulhu_image_filename" in article["meta"]:
+                image_filename = article["meta"]["cthulhu_image_filename"]
+                image_path = CTHULHU_IMAGE_DIR / image_filename
+                static_image_path: Path = static_image_dir / image_filename
+                if not static_image_path.exists():
+                    shutil.copy2(image_path, static_image_path)
+                    logger.debug(f"copied image to static folder image_filename={image_filename}")
+            else:
+                logger.warning(f"no image image_filename={image_filename}")
             if article["reactions"] is not None:
                 for reaction in article["reactions"]:
                     if reaction in DEFAULT_NEWS_REACTIONS:

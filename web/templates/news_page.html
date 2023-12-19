@@ -14,7 +14,7 @@
         id="favicon"
         rel="icon"
         type="image/x-icon"
-        href="static/images/cobra.svg"
+        href="/static/images/cobra.svg"
     >
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
@@ -36,7 +36,7 @@
             </div>
             <!-- <h3 class="facade-sign">But this is just the facade...</h3> -->
             <h2 class="facade-sign">But this is just the facade</h2>
-            <img src="data:image/jpeg;base64,{{ article['cthulhu_image'] | safe }}" class="news-image">
+            <img src="/static/cthulhu-images/{{ article['meta']['cthulhu_image_filename'] }}" class="news-image">
             <h2 class="truth-title">{{ article['cthulhu_new_title'] }}</h2>
             <p class="truth-text">{{ article['cthulhu_truth'] }}</p>
             <div class="news-source">

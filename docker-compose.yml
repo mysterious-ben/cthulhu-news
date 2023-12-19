@@ -16,6 +16,7 @@ services:
     volumes:
       - ./web/logs:/app/logs
       - ./web/data:/app/data
+      - ./web/static:/app/static
     environment:
       - PUID=1000
       - PGID=1000
@@ -42,6 +43,7 @@ services:
     volumes:
       - ./web/logs:/app/logs
       - ./web/data:/app/data
+      - ./web/static:/app/static
     environment:
       - PUID=1000
       - PGID=1000

@@ -25,6 +25,8 @@ web/data/*
 !web/data/.gitkeep
 db/data/*
 !db/data/.gitkeep
+web/static/cthulhu-images/*
+!web/static/cthulhu-images/.gitkeep
 *.db
 *.log
 
