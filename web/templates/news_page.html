@@ -16,7 +16,10 @@
         type="image/x-icon"
         href="/static/images/cobra.svg"
     >
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
 </head>
 
@@ -32,11 +35,19 @@
             <h2 class="main-title">{{ article['title'] }}</h2>
             <p>{{ article['original_text'] }}</p>
             <div class="news-source">
-                (reported by <a href="{{ article['url'] }}">{{ article['media_source_name'] }}</a> on {{ article['published_at'][:10] }})
+                (reported by <a href="{{ article['url'] }}">{{ article['media_source_name'] }}</a> on {{
+                article['published_at'][:10] }})
             </div>
             <!-- <h3 class="facade-sign">But this is just the facade...</h3> -->
             <h2 class="facade-sign">But this is just the facade</h2>
-            <img src="/static/cthulhu-images/{{ article['meta']['cthulhu_image_filename'] }}" class="news-image">
+            <img
+                srcset="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-small.jpg 500w,
+                /static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-medium.jpg 1000w,
+                /static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-large.jpg 1500w"
+                src="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-default.jpg"
+                alt="News Image"
+                class="news-image"
+            >
             <h2 class="truth-title">{{ article['cthulhu_new_title'] }}</h2>
             <p class="truth-text">{{ article['cthulhu_truth'] }}</p>
             <div class="news-source">

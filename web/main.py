@@ -1,7 +1,6 @@
 import base64
 import itertools
 import json
-import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -22,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from loguru import logger
 from logutil import init_loguru
 from openai import OpenAI
+from PIL import Image
 
 load_dotenv(find_dotenv())
 
@@ -286,6 +286,7 @@ def _add_cthulhu_images(docs: list[dict]) -> None:
         doc["meta"].update(
             {
                 "cthulhu_image_prompt": dalle_prompt,
+                "cthulhu_image_name": image_name,
                 "cthulhu_image_filename": image_filename,
                 "cthulhu_image_dir": str(CTHULHU_IMAGE_DIR),
             }
@@ -400,6 +401,14 @@ async def count_news() -> int:
     return count
 
 
+STATIC_IMAGE_TYPES: dict[str, dict] = {
+    "default": {"size": None, "jpg_quality": 95},
+    "large": {"size": None, "jpg_quality": 95},
+    "medium": {"size": (768, 768), "jpg_quality": 95},
+    "small": {"size": (512, 512), "jpg_quality": 95},
+}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def read_news(request: Request):
     start = datetime.now()
@@ -415,10 +424,20 @@ async def read_news(request: Request):
             if "cthulhu_image_filename" in article["meta"]:
                 image_filename = article["meta"]["cthulhu_image_filename"]
                 image_path = CTHULHU_IMAGE_DIR / image_filename
-                static_image_path: Path = static_image_dir / image_filename
-                if not static_image_path.exists():
-                    shutil.copy2(image_path, static_image_path)
-                    logger.debug(f"copied image to static folder image_filename={image_filename}")
+                # TO DO: remove this check later (only required once)
+                if "cthulhu_image_name" not in article["meta"]:
+                    article["meta"]["cthulhu_image_name"] = str(Path(image_filename).stem)
+                image_name = article["meta"]["cthulhu_image_name"]
+                for img_type, img_params in STATIC_IMAGE_TYPES.items():
+                    static_image_path: Path = static_image_dir / f"{image_name}-{img_type}.jpg"
+                    if not static_image_path.exists():
+                        with Image.open(image_path) as img:
+                            if img.mode in ("RGBA", "P"):
+                                img = img.convert("RGB")
+                            if img_params["size"] is not None:
+                                img = img.resize(img_params["size"], Image.Resampling.LANCZOS)
+                            img.save(static_image_path, "JPEG", quality=img_params["jpg_quality"])
+                        logger.debug(f"created static image path={static_image_path}")
             else:
                 logger.warning(f"no image image_filename={image_filename}")
             if article["reactions"] is not None:
