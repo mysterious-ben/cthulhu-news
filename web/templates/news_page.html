@@ -31,14 +31,12 @@
             class="news-box"
             id="article-{{ article['id'] }}"
         >
-            <!-- <h2>{{ article['title'] }}</h2> -->
             <h2 class="main-title">{{ article['title'] }}</h2>
             <p>{{ article['original_text'] }}</p>
             <div class="news-source">
                 (reported by <a href="{{ article['url'] }}">{{ article['media_source_name'] }}</a> on {{
                 article['published_at'][:10] }})
             </div>
-            <!-- <h3 class="facade-sign">But this is just the facade...</h3> -->
             <h2 class="facade-sign">But this is just the facade</h2>
             <img
                 srcset="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-small.jpg 500w,
@@ -53,17 +51,14 @@
             <div class="news-source">
                 (reported by ███ ██████ on {{ article['published_at'][:10] }})
             </div>
-            <div class="news-reactions">
-                {% for reaction, reaction_items in article['reactions'].items() %}
+
+            <div style="text-align:center"> 
                 <button
                     class="button"
-                    hx-target="#{{ reaction }}-count-{{ article['id'] }}"
-                    hx-swap="outerHTML"
-                    hx-post="/react/{{ reaction }}/{{ article['id'] }}"
-                >{{ reaction_items['pretty'] }}: <span id="{{ reaction }}-count-{{ article['id'] }}">{{
-                        reaction_items['value'] }}</span>
+                    onclick="location.href='/article/{{ article['id'] }}'"
+                >
+                    Go to the article >>
                 </button>
-                {% endfor %}
             </div>
 
         </div>

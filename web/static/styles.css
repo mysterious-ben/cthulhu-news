@@ -169,15 +169,6 @@ h1, h2, h3, h4 {
     /* color: var(--truth-color); */
     /* -webkit-text-stroke: 1px #111; */
     font-family: var(--truth-font), serif;
-    text-shadow:
-    -1px -1px 0 #000,
-     0   -1px 0 #000,
-     1px -1px 0 #000,
-     1px  0   0 #000,
-     1px  1px 0 #000,
-     0    1px 0 #000,
-    -1px  1px 0 #000,
-    -1px  0   0 #000;
 }
 
 .news-image {
@@ -224,6 +215,48 @@ button {
 
 button:hover {
     background-color: var(--lighter-background-color);
+}
+
+.button-comment {
+    margin-top: 5px;
+    margin-left: 0;
+}
+
+hr {
+    display: block;
+    height: 1px;
+    border: 0;
+    border-top: 1px solid var(--news-border-color);
+    margin: 1em 0;
+    padding: 0;
+}
+
+.comments-box {
+    border-top: 1px solid var(--news-border-color);
+    border-bottom: 1px solid var(--news-border-color);
+    padding: 15px 25px;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.others-say {
+    font-weight: bold;
+    font-size: 1.3em;
+}
+
+input[type=text] {
+    width: 15em;
+    margin: 8px 0;
+    /* box-sizing: border-box; */
+    font-family: var(--main-font);
+    font-size: 0.8em;
+}
+
+textarea {
+    width: 100%;
+    margin-bottom: 5px;
+    font-family: var(--main-font);
+    font-size: 0.8em;
 }
 
 @media screen and (max-width: 700px) {

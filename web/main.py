@@ -7,14 +7,13 @@ from pathlib import Path
 from typing import Optional
 
 import aiosqlite
-import httpx
 import pymongo
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -46,8 +45,11 @@ CTHULHU_IMAGE_DIR = Path("data", "images")
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 HTML_STATIC_DIR = Path(__file__).parent / "static"
 DEFAULT_NEWS_REACTIONS = {
-    "like": {"pretty": "Truth", "value": 0},
-    "dislike": {"pretty": "Lie", "value": 0},
+    "choices": {
+        "like": {"pretty": "Truth", "value": 0},
+        "dislike": {"pretty": "Lie", "value": 0},
+    },
+    "comments": [],
 }
 
 init_loguru(file_path="logs/log.log")
@@ -90,6 +92,9 @@ def init_local_news_db():
             )"""
         )
         logger.info("initialized the local news db")
+
+        # c.execute(f"""UPDATE news SET reactions = '{json.dumps(DEFAULT_NEWS_REACTIONS)}'""")
+        # logger.warning("reset the reactions in the local news db")
 
 
 init_local_news_db()
@@ -366,25 +371,27 @@ def load_external_news(from_: Optional[datetime], to_: Optional[datetime], limit
 
 
 # @TTLCache(maxsize=0, ttl=SQLITE_READ_CACHE_FOR_X_SECONDS)
-async def get_news() -> list[dict]:
+async def get_news(article_id: Optional[int] = None) -> list[dict]:
     """Get news from the local db"""
 
     start = datetime.now()
-    logger.debug("getting all news from the local db...")
+    logger.debug(f"getting all news from the local db article_id={article_id}...")
+    sql = """SELECT * FROM news"""
+    if article_id is not None:
+        sql += f""" WHERE id == {article_id}"""
+    sql += """ ORDER BY published_at DESC"""
     async with aiosqlite.connect(db_path) as conn:
-        async with conn.execute(
-            """SELECT * FROM news ORDER BY published_at DESC""",
-        ) as c:
+        async with conn.execute(sql) as c:
             records = await c.fetchall()
             columns = [x[0] for x in c.description]
-    logger.debug("fetched all news from the local db")
+    logger.debug(f"fetched all news from the local db article_id={article_id}")
     news_articles = [{k: v for k, v in zip(columns, rec)} for rec in records]
     for article in news_articles:
         for k in ("meta", "reactions"):
             article[k] = json.loads(article[k])
     elapsed = (datetime.now() - start).total_seconds()
     logger.info(
-        "fetched and processed all news from the local db "
+        f"fetched and processed all news from the local db article_id={article_id} "
         f"n={len(news_articles)} elapsed={elapsed:.2f}s"
     )
     return news_articles
@@ -409,47 +416,44 @@ STATIC_IMAGE_TYPES: dict[str, dict] = {
 }
 
 
+def _prepare_news_articles_for_html(news_articles: list[dict]) -> None:
+    static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
+    for article in news_articles:
+        if "cthulhu_image_filename" in article["meta"]:
+            image_filename = article["meta"]["cthulhu_image_filename"]
+            image_path = CTHULHU_IMAGE_DIR / image_filename
+            # TO DO: remove this check later (only required once)
+            if "cthulhu_image_name" not in article["meta"]:
+                article["meta"]["cthulhu_image_name"] = str(Path(image_filename).stem)
+            image_name = article["meta"]["cthulhu_image_name"]
+            for img_type, img_params in STATIC_IMAGE_TYPES.items():
+                static_image_path: Path = static_image_dir / f"{image_name}-{img_type}.jpg"
+                if not static_image_path.exists():
+                    with Image.open(image_path) as img:
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        if img_params["size"] is not None:
+                            img = img.resize(img_params["size"], Image.Resampling.LANCZOS)
+                        img.save(static_image_path, "JPEG", quality=img_params["jpg_quality"])
+                    logger.debug(f"created static image path={static_image_path}")
+        else:
+            logger.warning(f"no image image_filename={image_filename}")
+        if article["reactions"] is not None:
+            print(article["reactions"])
+            for choice in article["reactions"]["choices"]:
+                if choice in DEFAULT_NEWS_REACTIONS["choices"]:
+                    article["reactions"]["choices"][choice]["pretty"] = DEFAULT_NEWS_REACTIONS[
+                        "choices"
+                    ][choice]["pretty"]
+
+
 @app.get("/", response_class=HTMLResponse)
-async def read_news(request: Request):
+async def news_main_page(request: Request):
     start = datetime.now()
     logger.debug("loading the news page...")
-    static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
-    try:
-        news_articles = await get_news()
-        if len(news_articles) > 0:
-            assert hasattr(news_articles[0]["reactions"], "items")
 
-        # Make data HTML-friendly
-        for article in news_articles:
-            if "cthulhu_image_filename" in article["meta"]:
-                image_filename = article["meta"]["cthulhu_image_filename"]
-                image_path = CTHULHU_IMAGE_DIR / image_filename
-                # TO DO: remove this check later (only required once)
-                if "cthulhu_image_name" not in article["meta"]:
-                    article["meta"]["cthulhu_image_name"] = str(Path(image_filename).stem)
-                image_name = article["meta"]["cthulhu_image_name"]
-                for img_type, img_params in STATIC_IMAGE_TYPES.items():
-                    static_image_path: Path = static_image_dir / f"{image_name}-{img_type}.jpg"
-                    if not static_image_path.exists():
-                        with Image.open(image_path) as img:
-                            if img.mode in ("RGBA", "P"):
-                                img = img.convert("RGB")
-                            if img_params["size"] is not None:
-                                img = img.resize(img_params["size"], Image.Resampling.LANCZOS)
-                            img.save(static_image_path, "JPEG", quality=img_params["jpg_quality"])
-                        logger.debug(f"created static image path={static_image_path}")
-            else:
-                logger.warning(f"no image image_filename={image_filename}")
-            if article["reactions"] is not None:
-                for reaction in article["reactions"]:
-                    if reaction in DEFAULT_NEWS_REACTIONS:
-                        article["reactions"][reaction]["pretty"] = DEFAULT_NEWS_REACTIONS[
-                            reaction
-                        ]["pretty"]
-
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=500, detail="Error while collecting news articles") from e
-
+    news_articles = await get_news()
+    _prepare_news_articles_for_html(news_articles)
     response = templates.TemplateResponse(
         "news_page.html", {"request": request, "news_articles": news_articles}
     )
@@ -461,27 +465,78 @@ async def read_news(request: Request):
 
 @app.post("/react/{reaction}/{article_id}")
 async def react_to_article(reaction: str, article_id: int) -> PlainTextResponse:
-    try:
-        async with aiosqlite.connect(db_path) as conn:
-            await conn.execute(
-                f"""UPDATE news SET """
-                f"""reactions = json_replace(reactions, '$.{reaction}.value', """
-                f"""json_extract(reactions, '$.{reaction}.value') + 1 ) """
-                f"""WHERE id == {article_id}"""
-            )
-            await conn.commit()
-            async with conn.execute(
-                f"""SELECT json_extract(reactions, '$.{reaction}.value') FROM news WHERE id == {article_id}"""
-            ) as c:
-                rows = await c.fetchone()
-            assert rows is not None
-            new_count = rows[0]
-        return PlainTextResponse(
-            f"""<span id="{reaction}-count-{article_id}">{new_count}</span>"""
+    async with aiosqlite.connect(db_path) as conn:
+        await conn.execute(
+            f"""UPDATE news SET """
+            f"""reactions = json_replace(reactions, '$.choices.{reaction}.value', """
+            f"""json_extract(reactions, '$.choices.{reaction}.value') + 1 ) """
+            f"""WHERE id == {article_id}"""
         )
-    except Exception as e:
-        raise e
-        # raise HTTPException(status_code=500, detail=str(e)) from e
+        await conn.commit()
+        async with conn.execute(
+            f"""SELECT json_extract(reactions, '$.choices.{reaction}.value') FROM news WHERE id == {article_id}"""
+        ) as c:
+            rows = await c.fetchone()
+        assert rows is not None
+        new_count = rows[0]
+    return PlainTextResponse(f"""<span id="{reaction}-count-{article_id}">{new_count}</span>""")
+
+
+def assert_one_article_exists(news_articles: list, article_id: int):
+    if article_id is not None:
+        if len(news_articles) == 0:
+            raise HTTPException(404, detail=f"The article not found article_id={article_id}")
+        elif len(news_articles) > 1:
+            raise HTTPException(
+                500, detail=f"Too many articles article_id={article_id} n={len(news_articles)}"
+            )
+
+
+@app.get("/article/{article_id}", response_class=HTMLResponse)
+async def news_article_page(request: Request, article_id: int):
+    start = datetime.now()
+    logger.debug("loading the article page...")
+
+    news_articles = await get_news(article_id=article_id)
+    assert_one_article_exists(news_articles, article_id)
+    _prepare_news_articles_for_html(news_articles)
+
+    response = templates.TemplateResponse(
+        "news_article.html", {"request": request, "article": news_articles[0]}
+    )
+    elapsed = (datetime.now() - start).total_seconds()
+    logger.info(f"prepared the article page elapsed={elapsed:.2f}s")
+    return response
+
+
+@app.post("/submit_comment/{article_id}")
+async def submit_comment(
+    article_id: int, request: Request, author: str = Form(...), comment: str = Form(...)
+):
+    if len(author) == 0 or len(comment) == 0:
+        return
+
+    json_data = {
+        "author": author,
+        "comment": comment,
+        "created_at": datetime.now(tz=timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%SZ"),
+    }
+    async with aiosqlite.connect(db_path) as conn:
+        await conn.execute(
+            f"""UPDATE news SET """
+            f"""reactions = json_insert(reactions, '$.comments[#]', json('{json.dumps(json_data)}') ) """
+            f"""WHERE id == {article_id}"""
+        )
+        await conn.commit()
+
+    news_articles = await get_news(article_id=article_id)
+    assert_one_article_exists(news_articles, article_id)
+    _prepare_news_articles_for_html(news_articles)
+    article = news_articles[0]
+    # article["meta"]["comments"] = [{"author": author, "comment": comment}]
+
+    context = {"request": request, "article": article}
+    return templates.TemplateResponse("comments.html", context)
 
 
 def latest_published_at() -> Optional[datetime]:

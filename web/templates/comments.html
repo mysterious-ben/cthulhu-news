@@ -1,0 +1,8 @@
+<!-- templates/comments.html -->
+
+<div class="others-say">Others are saying...</div>
+<ul>
+{% for comment in article['reactions']['comments'] %}
+<li><strong>{{ comment.author }}:</strong> {{ comment.comment }}</li>
+{% endfor %}
+</ul>
