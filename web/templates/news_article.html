@@ -21,6 +21,7 @@
         content="width=device-width, initial-scale=1"
     >
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
+    <script src="/static/js/main.js"></script>
 </head>
 
 <div class="news-area">
@@ -52,12 +53,16 @@
         <div class="news-reactions">
             {% for reaction, reaction_items in article['reactions']['choices'].items() %}
             <button
-                class="button"
+                class="button button-like"
+                data-like-btn="{{ article['id'] }}"
                 hx-target="#{{ reaction }}-count-{{ article['id'] }}"
                 hx-swap="outerHTML"
-                hx-post="/react/{{ reaction }}/{{ article['id'] }}"
-            >{{ reaction_items['pretty'] }}: <span id="{{ reaction }}-count-{{ article['id'] }}">{{
-                    reaction_items['value'] }}</span>
+                onclick="main.likeClick(`{{ reaction }}`, `{{ article['id'] }}`, `{{ reaction }}-count-{{ article['id'] }}`)"
+            >
+                {{ reaction_items['pretty'] }}:
+                <span id="{{ reaction }}-count-{{ article['id'] }}">
+                    {{ reaction_items['value'] }}
+                </span>
             </button>
             {% endfor %}
         </div>

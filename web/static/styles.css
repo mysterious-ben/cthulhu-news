@@ -213,6 +213,12 @@ button {
     cursor: pointer;
 }
 
+button:disabled {
+    background-color: var(--lighter-background-color);
+    color: var(--deemed-font-color);
+    cursor: not-allowed;
+}
+
 button:hover {
     background-color: var(--lighter-background-color);
 }
