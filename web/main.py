@@ -439,12 +439,16 @@ def _prepare_news_articles_for_html(news_articles: list[dict]) -> None:
         else:
             logger.warning(f"no image image_filename={image_filename}")
         if article["reactions"] is not None:
-            print(article["reactions"])
             for choice in article["reactions"]["choices"]:
                 if choice in DEFAULT_NEWS_REACTIONS["choices"]:
                     article["reactions"]["choices"][choice]["pretty"] = DEFAULT_NEWS_REACTIONS[
                         "choices"
                     ][choice]["pretty"]
+            for comment in article["reactions"]["comments"]:
+                if "author" in comment:
+                    comment["author"] = "".join(
+                        " " if x == " " else "█" for x in comment["author"]
+                    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -479,7 +483,8 @@ async def react_to_article(reaction: str, article_id: int) -> PlainTextResponse:
             rows = await c.fetchone()
         assert rows is not None
         new_count = rows[0]
-    return PlainTextResponse(f"""<span id="{reaction}-count-{article_id}">{new_count}</span>""")
+    logger.info(f"reacted to the article article_id={article_id} reaction={reaction}")
+    return PlainTextResponse(f"""{new_count}""")
 
 
 def assert_one_article_exists(news_articles: list, article_id: int):
@@ -511,7 +516,10 @@ async def news_article_page(request: Request, article_id: int):
 
 @app.post("/submit_comment/{article_id}")
 async def submit_comment(
-    article_id: int, request: Request, author: str = Form(...), comment: str = Form(...)
+    article_id: int,
+    request: Request,
+    author: str = Form(...),
+    comment: str = Form(...),
 ):
     if len(author) == 0 or len(comment) == 0:
         return
@@ -536,6 +544,7 @@ async def submit_comment(
     # article["meta"]["comments"] = [{"author": author, "comment": comment}]
 
     context = {"request": request, "article": article}
+    logger.info(f"commented the article article_id={article_id} comment='{comment[:15]}'")
     return templates.TemplateResponse("comments.html", context)
 
 

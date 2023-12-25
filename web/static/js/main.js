@@ -1,26 +1,31 @@
+// static/js/main.js
+
 const USER_ID = "user_id";
-const ARTICLES = "articles";
-const LIKE_BTN = "[data-like-btn]"; // data-like-btn="{{ article['id'] }}"
-const LIKE_BTN_DATASET = "likeBtn"; // interpolation of data-like-btn attribute
-const LIKES_URL = "/react";
+const REACTED_ARTICLES = "reacted_articles";
+const COMMENTED_ARTICLES = "commented_articles";
+const REACT_BTN = "[data-react-btn]";
+const REACT_BTN_DATASET = "reactBtn"; // interpolation of data-react-btn attribute
+const COMMENT_FORM = "[data-comment-form]";
+const COMMENT_FORM_DATASET = "commentForm"; // interpolation of data-react-btn attribute
 
 let main = null;
 document.addEventListener("DOMContentLoaded", () => main = new Main());
 
 class Main {
     userId = null;
-    likedArticles = [];
-    httpUtils = null;
+    reactedArticles = [];
+    commentedArticles = [];
 
     constructor() {
         this.initStorage();
-        this.updateLikeButtons();
-        this.httpUtils = new HttpUtils(this.userId);
+        this.updateReactionButtons();
+        this.updateCommentForms();
     }
 
     initStorage() {
         this.userId = localStorage.getItem(USER_ID);
-        this.likedArticles = localStorage.getItem(ARTICLES)?.split(',') || [];
+        this.reactedArticles = localStorage.getItem(REACTED_ARTICLES)?.split(',') || [];
+        this.commentedArticles = localStorage.getItem(COMMENTED_ARTICLES)?.split(',') || [];
 
         if (this.userId === null) {
             this.userId = new Date().getTime() + '';
@@ -29,61 +34,51 @@ class Main {
         }
     }
 
-    updateLikeButtons() {
-        const buttons = document.querySelectorAll(LIKE_BTN);
+    // --- Reactions ---
+
+    updateReactionButtons() {
+        const buttons = document.querySelectorAll(REACT_BTN);
         buttons.forEach(button => {
-            const articleId = button.dataset[LIKE_BTN_DATASET];
-            button.disabled = this.likedArticles.includes(articleId);
+            const articleId = button.dataset[REACT_BTN_DATASET];
+            button.disabled = this.reactedArticles.includes(articleId);
         });
     }
 
-    setArticles(articleId) {
-        this.likedArticles.push(articleId);
-        localStorage.setItem(ARTICLES, this.likedArticles.join(','));
+    setReactedArticles(articleId) {
+        this.reactedArticles.push(articleId);
+        localStorage.setItem(REACTED_ARTICLES, this.reactedArticles.join(','));
     }
 
-    updateBtnValue (htmlElementId, html) {
-        if (html) {
-            document.getElementById(htmlElementId).outerHTML = html;
-        }
+    reactionClick = async (articleId) => {
+        if (this.reactedArticles.includes(articleId)) return;
+
+        this.setReactedArticles(articleId);
+        this.updateReactionButtons();
     }
 
-    likeClick = async (reaction, articleId, htmlElementId) => {
-        if (this.likedArticles.includes(articleId)) return;
+    // --- Comments ---
 
-        this.setArticles(articleId);
-
-        const html = await this.httpUtils.postLike(reaction, articleId);
-        this.updateBtnValue(htmlElementId, html);
-
-        this.updateLikeButtons();
-    }
-}
-
-class HttpUtils {
-    userId = null;
-    constructor(userId) {
-        this.userId = userId;
+    updateCommentForms() {
+        const forms = document.querySelectorAll(COMMENT_FORM);
+        forms.forEach(form => {
+            const articleId = form.dataset[COMMENT_FORM_DATASET];
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (this.commentedArticles.includes(articleId)) {
+                if (submitButton) submitButton.disabled = true;
+                form.style.display = 'none';
+            }
+        });
     }
 
-    async postLike (reaction, articleId) {
-        try {
-            const response = await fetch(
-                `${LIKES_URL}/${reaction}/${articleId}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: this.userId
-                    })
-                }
-            );
+    setCommentedArticles(articleId) {
+        this.commentedArticles.push(articleId);
+        localStorage.setItem(COMMENTED_ARTICLES, this.commentedArticles.join(','));
+    }
 
-            return await response.text();
-        } catch (e) {
-            console.error(e);
-        }
+    commentSubmit = async (articleId) => {
+        if (this.commentedArticles.includes(articleId)) return;
+
+        this.setCommentedArticles(articleId);
+        this.updateCommentForms();
     }
 }

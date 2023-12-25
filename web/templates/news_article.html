@@ -1,4 +1,5 @@
 <!-- templates/news_article.html -->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -53,11 +54,12 @@
         <div class="news-reactions">
             {% for reaction, reaction_items in article['reactions']['choices'].items() %}
             <button
-                class="button button-like"
-                data-like-btn="{{ article['id'] }}"
+                class="button button-react"
+                data-react-btn="{{ article['id'] }}"
                 hx-target="#{{ reaction }}-count-{{ article['id'] }}"
-                hx-swap="outerHTML"
-                onclick="main.likeClick(`{{ reaction }}`, `{{ article['id'] }}`, `{{ reaction }}-count-{{ article['id'] }}`)"
+                hx-swap="innerHTML"
+                hx-post="/react/{{ reaction }}/{{ article['id'] }}"
+                onclick="main.reactionClick(`{{ article['id'] }}`)"
             >
                 {{ reaction_items['pretty'] }}:
                 <span id="{{ reaction }}-count-{{ article['id'] }}">
@@ -69,17 +71,26 @@
 
         <div class="comments-box">
             <section id="comments-{{ article['id'] }}">
-                <!-- The content of this element will be replaced by HTMX -->
                 {% include 'comments.html' %}
             </section>
             
             <hr/>
             
-            <form hx-post="/submit_comment/{{ article['id'] }}" hx-swap="outerHTML" hx-target="#comments-{{ article['id'] }}">
-                <input type="text" name="author" placeholder="Your (fake) name" required><br/>
+            <form
+                data-comment-form="{{ article['id'] }}"
+                hx-post="/submit_comment/{{ article['id'] }}"
+                hx-swap="outerHTML"
+                hx-target="#comments-{{ article['id'] }}"
+                onsubmit="main.commentSubmit(`{{ article['id'] }}`);"
+            >
                 <textarea name="comment" rows="3" placeholder="Your rumor about this event..." required></textarea><br/>
+                <input type="text" name="author" placeholder="Your (fake) name" required><br/>
                 <button class="button-comment" type="submit">Add a new rumour</button>
             </form>
+
+            <div class="thanks-message" id="thanks-message-{{ article['id'] }}" style="display:none;">
+                Thank you for your contribution.
+            </div>
         </div>
 
         <div style="text-align:center"> 
@@ -87,7 +98,7 @@
                 class="button"
                 onclick="location.href='/'"
             >
-                << Back
+                ← Back
             </button>
         </div>
     </div>

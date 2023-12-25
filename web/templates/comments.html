@@ -1,8 +1,10 @@
 <!-- templates/comments.html -->
 
 <div class="others-say">Others are saying...</div>
-<ul>
-{% for comment in article['reactions']['comments'] %}
-<li><strong>{{ comment.author }}:</strong> {{ comment.comment }}</li>
-{% endfor %}
+<ul style="padding-left: 0;">
+    {% for comment in article['reactions']['comments'] %}
+    <li class="comment-text">
+        {{ comment.comment }} <div class="comment-source">(reported by {{ comment.author }})</div>
+    </li>
+    {% endfor %}
 </ul>

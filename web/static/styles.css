@@ -82,6 +82,15 @@
     --link-color: rgb(167, 180, 254);
     --link-color-active: rgb(234, 235, 255);
     --link-color-visited: rgba(189, 200, 255, 0.7);
+    --text-shadow-params:
+        -1px -1px 0 #000,
+        0 -1px 0 #000,
+        1px -1px 0 #000,
+        1px 0 0 #000,
+        1px 1px 0 #000,
+        0 1px 0 #000,
+        -1px 1px 0 #000,
+        -1px 0 0 #000;
 }
 
 body {
@@ -94,7 +103,10 @@ body {
     justify-content: center;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
     text-align: center;
 }
 
@@ -117,14 +129,14 @@ h1, h2, h3, h4 {
     font-size: 1.7rem;
     text-align: center;
     text-shadow:
-    -1px -1px 0 #000,
-    0   -1px 0 #000,
-    1px -1px 0 #000,
-    1px  0   0 #000,
-    1px  1px 0 #000,
-    0    1px 0 #000,
-   -1px  1px 0 #000,
-   -1px  0   0 #000;
+        -1px -1px 0 #000,
+        0 -1px 0 #000,
+        1px -1px 0 #000,
+        1px 0 0 #000,
+        1px 1px 0 #000,
+        0 1px 0 #000,
+        -1px 1px 0 #000,
+        -1px 0 0 #000;
 }
 
 .facade-sign {
@@ -135,14 +147,14 @@ h1, h2, h3, h4 {
     font-size: 2.5rem;
     text-align: center;
     text-shadow:
-    -1px -1px 0 #000,
-     0   -1px 0 #000,
-     1px -1px 0 #000,
-     1px  0   0 #000,
-     1px  1px 0 #000,
-     0    1px 0 #000,
-    -1px  1px 0 #000,
-    -1px  0   0 #000;
+        -1px -1px 0 #000,
+        0 -1px 0 #000,
+        1px -1px 0 #000,
+        1px 0 0 #000,
+        1px 1px 0 #000,
+        0 1px 0 #000,
+        -1px 1px 0 #000,
+        -1px 0 0 #000;
 }
 
 .news-box {
@@ -194,7 +206,8 @@ a:visited {
     color: var(--link-color-visited) !important;
 }
 
-a:hover, a:active {
+a:hover,
+a:active {
     color: var(--link-color-active) !important;
 }
 
@@ -233,7 +246,7 @@ hr {
     height: 1px;
     border: 0;
     border-top: 1px solid var(--news-border-color);
-    margin: 1em 0;
+    margin: 1rem 0;
     padding: 0;
 }
 
@@ -241,28 +254,52 @@ hr {
     border-top: 1px solid var(--news-border-color);
     border-bottom: 1px solid var(--news-border-color);
     padding: 15px 25px;
-    margin-top: 1em;
-    margin-bottom: 1em;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .others-say {
     font-weight: bold;
-    font-size: 1.3em;
+    font-size: 1.3rem;
 }
 
 input[type=text] {
-    width: 15em;
+    width: 15rem;
     margin: 8px 0;
     /* box-sizing: border-box; */
-    font-family: var(--main-font);
-    font-size: 0.8em;
+    font-family: var(--main-font) !important;
+    color: var(--truth-color) !important;
+    /* background-color: var(--lighter-background-color) !important; */
+    background-color: var(--darker-background-color) !important;
+    font-size: 0.8rem;
 }
 
 textarea {
     width: 100%;
     margin-bottom: 5px;
-    font-family: var(--main-font);
-    font-size: 0.8em;
+    font-family: var(--main-font) !important;
+    color: var(--truth-color) !important;
+    background-color: var(--darker-background-color) !important;
+    font-size: 0.8rem;
+}
+
+.comment-text {
+    font-size: 0.9rem;
+    padding-bottom: 0.7rem;
+    list-style-type: none;
+}
+
+.comment-source {
+    color: var(--deemed-font-color);
+    font-weight: thin;
+    font-size: 0.8rem;
+    display:inline;
+}
+
+.thanks-message {
+    font-family: var(--truth-font);
+    font-size: 0.8rem;
+    text-align: center;
 }
 
 @media screen and (max-width: 700px) {
@@ -278,5 +315,7 @@ textarea {
     .column {
       flex: 1;
     } */
-    .news-image {width: 90%;}
+    .news-image {
+        width: 90%;
+    }
 }
