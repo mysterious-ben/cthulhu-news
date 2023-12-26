@@ -80,5 +80,13 @@ class Main {
 
         this.setCommentedArticles(articleId);
         this.updateCommentForms();
+
+        const thankElement = document.getElementById(`thanks-message-${articleId}`);
+        if (thankElement) {
+            thankElement.style.display = 'block';
+            setTimeout(() => {
+                thankElement.style.display = 'none';
+            }, 3000);
+        }
     }
 }
