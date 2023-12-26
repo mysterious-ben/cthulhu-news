@@ -261,6 +261,7 @@ hr {
 .others-say {
     font-weight: bold;
     font-size: 1.3rem;
+    margin-top: 0.5rem;
 }
 
 input[type=text] {
