@@ -62,9 +62,11 @@ class Main {
         const forms = document.querySelectorAll(COMMENT_FORM);
         forms.forEach(form => {
             const articleId = form.dataset[COMMENT_FORM_DATASET];
-            const submitButton = form.querySelector('button[type="submit"]');
             if (this.commentedArticles.includes(articleId)) {
+                const submitButton = form.querySelector('button[type="submit"]');
                 if (submitButton) submitButton.disabled = true;
+                const thankElement = document.getElementById(`thanks-message-${articleId}`);
+                if (thankElement) thankElement.style.display = 'block';
                 form.style.display = 'none';
             }
         });
@@ -80,13 +82,5 @@ class Main {
 
         this.setCommentedArticles(articleId);
         this.updateCommentForms();
-
-        const thankElement = document.getElementById(`thanks-message-${articleId}`);
-        if (thankElement) {
-            thankElement.style.display = 'block';
-            setTimeout(() => {
-                thankElement.style.display = 'none';
-            }, 3000);
-        }
     }
 }
