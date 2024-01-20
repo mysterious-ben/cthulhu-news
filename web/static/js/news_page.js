@@ -2,13 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                // ссылка на оригинальное изображение хранится в атрибуте "data-src"
-                entry.target.src = entry.target.dataset.src
+                // need attribute data-src and data-srcset
                 entry.target.srcset = entry.target.dataset.srcset
+                entry.target.src = entry.target.dataset.src
                 observer.unobserve(entry.target)
             }
         })
-    }, { rootMargin: '500px' })
+    }, { rootMargin: '200px' })
 
     document.querySelectorAll('img[data-src]').forEach(img => observer.observe(img));
 });
