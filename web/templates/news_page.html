@@ -21,6 +21,7 @@
         content="width=device-width, initial-scale=1"
     >
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
+    <script src="/static/js/news_page.js"></script>
 </head>
 
 <body>
@@ -39,10 +40,10 @@
             </div>
             <h2 class="facade-sign">But this is just the facade</h2>
             <img
-                srcset="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-small.jpg 500w,
+                data-srcset="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-small.jpg 500w,
                 /static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-medium.jpg 1000w,
                 /static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-large.jpg 1500w"
-                src="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-default.jpg"
+                data-src="/static/cthulhu-images/{{ article['meta']['cthulhu_image_name'] }}-default.jpg"
                 alt="News Image"
                 class="news-image"
             >

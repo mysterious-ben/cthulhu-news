@@ -8,10 +8,10 @@ const REACT_BTN_DATASET = "reactBtn"; // interpolation of data-react-btn attribu
 const COMMENT_FORM = "[data-comment-form]";
 const COMMENT_FORM_DATASET = "commentForm"; // interpolation of data-react-btn attribute
 
-let main = null;
-document.addEventListener("DOMContentLoaded", () => main = new Main());
+let news_article = null;
+document.addEventListener("DOMContentLoaded", () => news_article = new NewsArticle());
 
-class Main {
+class NewsArticle {
     userId = null;
     reactedArticles = [];
     commentedArticles = [];

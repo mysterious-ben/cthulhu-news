@@ -22,7 +22,7 @@
         content="width=device-width, initial-scale=1"
     >
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
-    <script src="/static/js/main.js"></script>
+    <script src="/static/js/news_article.js"></script>
 </head>
 
 <div class="news-area">
@@ -59,7 +59,7 @@
                 hx-target="#{{ reaction }}-count-{{ article['id'] }}"
                 hx-swap="innerHTML"
                 hx-post="/react/{{ reaction }}/{{ article['id'] }}"
-                onclick="main.reactionClick(`{{ article['id'] }}`)"
+                onclick="news_article.reactionClick(`{{ article['id'] }}`)"
             >
                 {{ reaction_items['pretty'] }}:
                 <span id="{{ reaction }}-count-{{ article['id'] }}">
@@ -81,7 +81,7 @@
                 hx-post="/submit_comment/{{ article['id'] }}"
                 hx-swap="outerHTML"
                 hx-target="#comments-{{ article['id'] }}"
-                onsubmit="main.commentSubmit(`{{ article['id'] }}`);"
+                onsubmit="news_article.commentSubmit(`{{ article['id'] }}`);"
             >
                 <textarea name="comment" rows="3" placeholder="Your rumor about this event..." required></textarea><br/>
                 <input type="text" name="author" placeholder="Your (fake) name" required><br/>
