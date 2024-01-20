@@ -1,3 +1,5 @@
+const IMAGE_OFFSET = '200px';
+
 document.addEventListener('DOMContentLoaded', () => {
     const observer = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -8,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 observer.unobserve(entry.target)
             }
         })
-    }, { rootMargin: '200px' })
+    }, { rootMargin: IMAGE_OFFSET })
 
     document.querySelectorAll('img[data-src]').forEach(img => observer.observe(img));
 });
