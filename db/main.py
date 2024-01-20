@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
@@ -127,6 +128,7 @@ def load_news_articles(news_listings: list[dict]) -> None:
             listing["nltk_summary"] = page.summary
             listing["nltk_keywords"] = page.keywords
             logger.debug(f"downloaded and parsed news article title='{listing['title']}'")
+        time.sleep(0.5)
     logger.info(f"downloaded and parsed full news articles count={len(news_listings)}")
 
 
@@ -272,6 +274,7 @@ def load_all_recent_news():
     )
     for q in NEWS_QUERIES:
         load_news(q, from_=time_from, to_=None)
+        time.sleep(1)
     logger.info("loaded, parsed and saved all recent news articles")
 
 

@@ -165,22 +165,27 @@ def _parse_gpt_json_response(expected_fields: dict, response_json: dict) -> dict
     formatted_gpt_json = {}
     for field, conditions in expected_fields.items():
         value_is_correct = True
+        value = None
         if field in response_json:
-            value: str = response_json[field]
-            value = value.strip()
-            if conditions["force_lower"]:
-                value = value.lower()
-            if conditions["split"]:
-                value = [v.strip() for v in value.split(",")]  # type: ignore
-                if conditions["choices"]:
-                    value_is_correct = set(value).issubset(set(conditions["choices"]))  # type: ignore
+            if conditions.get("is_int", False):
+                value = int(response_json[field])
             else:
-                if conditions["choices"]:
-                    value_is_correct = value in set(conditions["choices"])  # type: ignore
-        if value_is_correct:
-            formatted_gpt_json[field] = value
-        else:
-            logger.warning(f"incorrect gpt value field={field} value={value}")
+                value = response_json[field]
+                assert isinstance(value, str)
+                value = value.strip()
+                if conditions["force_lower"]:
+                    value = value.lower()
+                if conditions["split"]:
+                    value = [v.strip() for v in value.split(",")]  # type: ignore
+                    if conditions["choices"]:
+                        value_is_correct = set(value).issubset(set(conditions["choices"]))  # type: ignore
+                else:
+                    if conditions["choices"]:
+                        value_is_correct = value in set(conditions["choices"])  # type: ignore
+            if value_is_correct:
+                formatted_gpt_json[field] = value
+            else:
+                logger.warning(f"incorrect gpt value field={field} value={value}")
     return formatted_gpt_json
 
 
