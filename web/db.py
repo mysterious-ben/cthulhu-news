@@ -1,0 +1,266 @@
+import atexit
+import json
+from datetime import datetime
+from functools import partial
+from envparse import env
+from typing import Optional
+
+import psycopg
+import psycopg.sql as sql
+from loguru import logger
+from psycopg_pool import ConnectionPool
+from pgvector.psycopg import register_vector
+
+# from psycopg_pool import AsyncConnectionPool
+from psycopg.types.json import Jsonb, set_json_dumps, set_json_loads
+
+import web.mapping as mapping
+
+
+POSTGRES_HOST = env.str("POSTGRES_HOST")
+POSTGRES_PORT = env.int("POSTGRES_PORT")
+POSTGRES_DB = env.str("POSTGRES_DB")
+POSTGRES_USER = env.str("POSTGRES_USER")
+POSTGRES_PASSWORD = env.str("POSTGRES_PASSWORD")
+POSTGRES_CONN_STR = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+
+# apgpool = AsyncConnectionPool(
+#     POSTGRES_CONN_STR,
+#     open=True,
+#     check=AsyncConnectionPool.check_connection,
+#     min_size=1,
+#     max_size=5,
+# )
+# atexit.register(apgpool.close)
+
+
+def configure(conn):
+    register_vector(conn)
+
+
+pgpool = ConnectionPool(
+    POSTGRES_CONN_STR,
+    open=True,
+    check=ConnectionPool.check_connection,
+    min_size=1,
+    max_size=5,
+    configure=configure,
+)
+atexit.register(pgpool.close)
+
+
+def default_json_converter(o):
+    if isinstance(o, datetime):
+        return o.isoformat()
+    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+
+
+set_json_dumps(partial(json.dumps, default=default_json_converter))
+
+
+set_json_loads(json.loads)  # This is the default behavior
+
+
+def pg_connect() -> psycopg.Connection:
+    return psycopg.connect(POSTGRES_CONN_STR, autocommit=True)
+
+
+def init_local_news_db():
+    """Internal function to initialize the local news database."""
+    with pgpool.connection() as conn:
+        # conn.execute("""DROP TABLE news""")
+
+        sql_cols = ",".join(f"{k} {v}" for k, v in mapping.sql_table_columns.items())
+        sql_str = f"""\
+        CREATE TABLE IF NOT EXISTS news (
+            {sql_cols}
+        )"""
+        conn.execute(sql_str)  # type: ignore
+        logger.info("initialized the local news db")
+
+        # c.execute(f"""UPDATE news SET reactions = '{json.dumps(DEFAULT_NEWS_REACTIONS)}'""")
+        # logger.warning("reset the reactions in the local news db")
+
+
+def _get_cthulhu_article(article_id: int) -> list[dict]:
+    """Get one Cthulhu article from the local db
+
+    DANGER: Can be exposed to external API, so SQL injection is possible"""
+    with pgpool.connection() as conn:
+        with conn.cursor() as c:
+            c.execute(
+                "SELECT * FROM news WHERE id = %s ORDER BY scene_timestamp DESC",
+                (article_id,),
+            )
+            row = c.fetchone()
+            assert c.description is not None
+            columns = [x[0] for x in c.description]
+    if row is None:
+        return []
+    return [{k: v for k, v in zip(columns, row)}]
+
+
+def _get_all_cthulhu_articles() -> list[dict]:
+    """Get all the Cthulhu articles from the local db
+
+    DANGER: Can be exposed to external API, so SQL injection is possible"""
+    with pgpool.connection() as conn:
+        with conn.cursor() as c:
+            c.execute("SELECT * FROM news ORDER BY scene_timestamp DESC")
+            rows = c.fetchall()
+            assert c.description is not None
+            columns = [x[0] for x in c.description]
+    articles = [{k: v for k, v in zip(columns, row)} for row in rows]
+    return articles
+
+
+def _process_if_json(value: str) -> bool:
+    if isinstance(value, str):
+        try:
+            json.loads(value)
+            return True
+        except json.JSONDecodeError:
+            return False
+    else:
+        return False
+
+
+def load_formatted_cthulhu_articles(article_id: Optional[int]) -> list[mapping.Scene]:
+    """Get and format Cthulhu article(s) from the local db
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+    start = datetime.now()
+    logger.debug(
+        f"getting all Cthulhu articles from the local db article_id={article_id}..."
+    )
+    if article_id is None:
+        db_cthulhu_articles = _get_all_cthulhu_articles()
+    else:
+        db_cthulhu_articles = _get_cthulhu_article(article_id=article_id)
+    # for db_article in db_cthulhu_articles:
+    #     for k, v in db_article.items():
+    #         db_article[k] = _process_if_json(v)
+    elapsed = (datetime.now() - start).total_seconds()
+    logger.info(
+        f"fetched and processed all Cthulhu articles from the local db article_id={article_id} "
+        f"n={len(db_cthulhu_articles)} elapsed={elapsed:.2f}s"
+    )
+
+    cthulhu_articles: list[mapping.Scene] = []
+    for db_article in db_cthulhu_articles:
+        a = mapping.sql_to_dict(db_article)
+        cthulhu_articles.append(a)
+    return cthulhu_articles
+
+
+def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
+    """Insert Cthulhu articles into the local db
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+
+    if len(cthulhu_articles) == 0:
+        return 0
+
+    # Convert records to SQLite-friendly format
+    docs_to_insert: list[dict] = []
+    for a in cthulhu_articles:
+        if (sk1 := set(a.keys())) != (sk2 := set(mapping.dict_sql_mapping.keys())):
+            raise AssertionError(
+                f"inserted scene key mismatch: {sk1 - sk2} | {sk2 - sk1}"
+            )
+        db_scene = mapping.dict_to_sql(a)
+        for k, v in db_scene.items():
+            if isinstance(v, dict):
+                db_scene[k] = Jsonb(v, )
+        docs_to_insert.append(db_scene)
+
+    # Insert records
+    sql_keys = list(docs_to_insert[0].keys())
+    sql_value_ids = [f"%({x})s" for x in sql_keys]
+    sql_str = (
+        f"""INSERT INTO news ({", ".join(sql_keys)}) """
+        f"""VALUES ({", ".join(sql_value_ids)})
+        ON CONFLICT (scene_number) DO NOTHING"""
+    )
+    with pgpool.connection() as conn:
+        with conn.cursor() as c:
+            c.executemany(sql_str, docs_to_insert)  # type: ignore
+            n_inserted = c.rowcount
+        conn.commit()
+    logger.info(f"inserted Cthulhu articles into the local db n={n_inserted}")
+    return n_inserted
+
+
+def latest_scene_timestamp() -> Optional[datetime]:
+    with pgpool.connection() as conn:
+        row = conn.execute("""SELECT max(scene_timestamp) FROM news""").fetchone()
+    if row is None or row[0] is None:
+        return None
+    return row[0]
+
+
+def get_cthulhu_article_votes(article_id: int) -> Optional[dict]:
+    """Get votes for an Chthulhu article
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+    with pgpool.connection() as conn:
+        with conn.execute(
+            """SELECT reactions->votes FROM news WHERE id = %s""", (article_id,)
+        ) as c:
+            rows = c.fetchone()
+    if rows is None:
+        return None
+    return rows[0]
+
+
+def inc_cthulhu_article_vote(article_id: int, vote: str, user: Optional[str] = None):
+    """Increment votes for an Chthulhu article
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+    if user is not None:
+        raise NotImplementedError
+
+    with pgpool.connection() as conn:
+        conn.execute(
+            """\
+UPDATE news
+SET reactions = jsonb_set(
+    reactions,
+    %s,
+    (COALESCE(reactions->votes->%s, 0) + 1)::int
+)
+WHERE id = %s
+""",
+            (["votes", sql.Identifier(vote)], sql.Identifier(vote), article_id),
+        )
+        conn.commit()
+
+
+def submit_cthulhu_article_comment(
+    article_id: int, comment_json: mapping.Comment, user: Optional[str]
+):
+    """Submit a comment for an Chthulhu article
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+    if user is not None:
+        raise NotImplementedError
+
+    with pgpool.connection() as conn:
+        conn.execute(
+            """\
+UPDATE news
+SET reactions = jsonb_insert(
+    reactions,
+    {comments, -1},
+    %s::jsonb
+)
+WHERE id == %s""",
+            (Jsonb(comment_json), article_id),
+        )
+        conn.commit()

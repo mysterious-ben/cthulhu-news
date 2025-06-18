@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web-page:
     build:
@@ -21,11 +19,12 @@ services:
       - PUID=1000
       - PGID=1000
       - MONGO_HOST=mongo
+      - POSTGRES_HOST=postgres
       - UVICON_HOST=0.0.0.0
     env_file:
       - .env
     entrypoint: ["uvicorn"]
-    command: ["main:app", "--host=0.0.0.0", "--port=8000"]
+    command: ["webapp:app", "--host=0.0.0.0", "--port=8000"]
     logging:
       driver: "json-file"
       options:
@@ -48,10 +47,11 @@ services:
       - PUID=1000
       - PGID=1000
       - MONGO_HOST=mongo
+      - POSTGRES_HOST=postgres
     env_file:
       - .env
     entrypoint: ["python"]
-    command: ["-m", "main"]
+    command: ["-m", "etl"]
     logging:
       driver: "json-file"
       options:
@@ -84,16 +84,16 @@ services:
 
   mongo:
     restart: unless-stopped
-    image: mongo:latest
+    image: mongo:8
     container_name: cthulhu-mongo
     ports:
-      - 27017:27017
+      - "${MONGO_PORT:-27017}:27017"
     expose:
       - 27017
     volumes:
-      - ./db/data/mongo_storage:/data/db
-      - ./db/logs/mongo_log:/var/log/mongodb
-      - ./db/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+      - ./mongo/data:/data/db
+      - ./mongo/logs/mongo_log:/var/log/mongodb
+      - ./mongo/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
     environment:
       - PUID=1000
       - PGID=1000
@@ -105,31 +105,62 @@ services:
       options:
         max-size: "50m"
         max-file: "2"
-
-  qdrant:
-    restart: unless-stopped
-    image: qdrant/qdrant:latest
-    container_name: cthulhu-qdrant
-    ports:
-      - 6333:6333
-      - 6334:6334
-    expose:
-      - 6333
-      - 6334
-    volumes:
-      - ./db/data/qdrant_storage:/qdrant/storage
+  
+  mongo-express:
+    image: mongo-express
+    container_name: cthulhu-mongo-express
     environment:
-      - PUID=1000
-      - PGID=1000
-      - QDRANT__LOG_LEVEL=INFO
-      - QDRANT__SERVICE__HTTP_PORT=6333
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017
     env_file:
       - .env
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
+    ports:
+      - "8081:8081"
+
+  # qdrant:
+  #   restart: unless-stopped
+  #   image: qdrant/qdrant:latest
+  #   container_name: cthulhu-qdrant
+  #   ports:
+  #     - 6333:6333
+  #     - 6334:6334
+  #   expose:
+  #     - 6333
+  #     - 6334
+  #   volumes:
+  #     - ./db/data/qdrant_storage:/qdrant/storage
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - QDRANT__LOG_LEVEL=INFO
+  #     - QDRANT__SERVICE__HTTP_PORT=6333
+  #   env_file:
+  #     - .env
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "50m"
+  #       max-file: "2"
+
+  postgres:
+    # image: postgres:17
+    image: pgvector/pgvector:pg17
+    container_name: cthulhu-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: postgres
+      TZ: UTC
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+      - ./pg/pg-scripts:/docker-entrypoint-initdb.d
+      - ./pg/pg-config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./pg/logs:/var/log/postgresql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    expose:
+      - 5432
+    restart: always
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
 
 networks:
   default:

@@ -6,9 +6,14 @@
 .idea
 .vscode
 
+# Claude
+.claude
+CLAUDE.md
+
 # Python version and packages
 venv/
 .venv/
+.python-version
 
 # Python cache
 __pycache__/
@@ -20,15 +25,26 @@ __pycache__/
 .pytype/
 .ipynb_checkpoints/
 
-# App generated files
+# App generated files: Data
 web/data/*
 !web/data/.gitkeep
 db/data/*
 !db/data/.gitkeep
+mongo/data/*
+!mongo/data/.gitkeep
+pg/data/*
+!pg/data/.gitkeep
+drafts/data/*
+*.db
+*.tar
+
+# App generated files: Logs
+*.log
+
+# App generated files: Other
 web/static/cthulhu-images/*
 !web/static/cthulhu-images/.gitkeep
-*.db
-*.log
+*.lock
 
 # Private files 
 db/secrets/*
