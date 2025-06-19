@@ -7,19 +7,20 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
+# import click
 import httpx
 import newspaper
 import nltk
 import pymongo
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from prefect import flow, task
+from prefect.schedules import Interval
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
 from logutil import init_loguru
 from pymongo.errors import BulkWriteError
 
-from db.llm_summary import add_gpt_info
+from llm_summary import add_gpt_info
 
 load_dotenv(find_dotenv())
 
@@ -168,7 +169,16 @@ def load_news(
         logger.info("no news articles to parse and save (skip)")
 
 
-def load_all_recent_news():
+@task(name="load_news_for_query", retries=2, retry_delay_seconds=30)
+def load_news_task(query, from_, to_=None):
+    """Task to load news for a specific query"""
+    logger.info(f"Loading news for query: {query}")
+    load_news(query, from_=from_, to_=to_)
+    time.sleep(1)
+
+
+@flow(name="load_all_recent_news", log_prints=True)
+def load_all_recent_news_flow():
     """Load all recent news articles, add a GPT summary and save to the local db"""
 
     time_now = datetime.now(tz=timezone.utc)
@@ -176,27 +186,46 @@ def load_all_recent_news():
         seconds=NEWS_QUERY_EVERY_X_SECONDS + NEWS_QUERY_WINDOW_EXTENSION_SECONDS
     )
     for q in NEWS_QUERIES:
-        load_news(q, from_=time_from, to_=None)
-        time.sleep(1)
+        load_news_task(q, from_=time_from, to_=None)
+
     logger.info("loaded, parsed and saved all recent news articles")
 
 
-def start_news_etl():
-    """Start the news ETL process"""
+# @click.command("serve")
+def start_news_etl_with_serve():
+    """Start the news ETL using Prefect serve (blocking)"""
 
-    logger.info("starting the scheduler...")
-    scheduler = BlockingScheduler()
-    start_time = datetime.now(tz=timezone.utc) + timedelta(seconds=5)
-    scheduler.add_job(
-        load_all_recent_news,
-        IntervalTrigger(seconds=NEWS_QUERY_EVERY_X_SECONDS),
-        name="download_news",
-        replace_existing=True,
-        next_run_time=start_time,
+    schedule = Interval(
+        timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
+        anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5),
     )
-    scheduler.start()
-    logger.info("started the scheduler...")
+    load_all_recent_news_flow.serve(
+        name="news-etl-deployment",
+        schedule=schedule,
+        tags=["news", "etl"],
+        description="Load news articles periodically",
+    )
+
+# @click.command("deploy")
+def deploy_news_etl():
+    """Deploy the news ETL to Prefect server"""
+    
+    schedule = Interval(
+        timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
+        anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5)
+    )
+    load_all_recent_news_flow.deploy(
+        name="news-etl-deployment",
+        schedule=schedule,
+        work_pool_name="default-agent-pool",
+        tags=["news", "etl"],
+        description="Load news articles periodically"
+    )
+    print("Deployment created: news-etl-deployment")
+    print("To run this deployment, start a worker:")
+    print("  prefect worker start --pool default-agent-pool")
 
 
 if __name__ == "__main__":
-    start_news_etl()
+    # logger.info("use 'deploy' or 'serve' commands to run the news ETL")
+    deploy_news_etl()

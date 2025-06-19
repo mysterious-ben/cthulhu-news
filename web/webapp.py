@@ -17,8 +17,8 @@ from PIL import Image
 from loguru import logger
 from logutil import init_loguru
 
-import web.mapping as mapping
-import web.db as db
+import mapping as mapping
+import db_utils as db
 
 load_dotenv(find_dotenv())
 

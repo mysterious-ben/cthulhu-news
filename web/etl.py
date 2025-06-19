@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Optional, Iterable
 
 import pymongo
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
+from prefect import flow, task
+from prefect.schedules import Cron
 from dateutil import parser  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
@@ -17,9 +17,9 @@ from loguru import logger
 from logutil import init_loguru
 
 # from web.llm_cthulhu import add_cthulhu_images, add_cthulhu_news
-from web.llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
-import web.mapping as mapping
-import web.db as db
+from llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
+import mapping as mapping
+import db as db
 
 load_dotenv(find_dotenv())
 

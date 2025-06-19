@@ -12,7 +12,7 @@ WORKDIR /app
 COPY . /app
 
 RUN \
-  pip install pip -U \
+  pip install pip -U && \
   pip install --no-cache-dir -r requirements.txt
 
 STOPSIGNAL SIGINT

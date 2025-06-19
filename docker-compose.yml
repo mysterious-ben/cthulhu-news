@@ -1,62 +1,62 @@
 services:
-  web-page:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    image: web-page:latest
-    container_name: cthulhu-web-page
-    init: true
-    ports:
-      - "8000:8000"
-    expose:
-      - 8000
-    volumes:
-      - ./web/logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_HOST=mongo
-      - POSTGRES_HOST=postgres
-      - UVICON_HOST=0.0.0.0
-    env_file:
-      - .env
-    entrypoint: ["uvicorn"]
-    command: ["webapp:app", "--host=0.0.0.0", "--port=8000"]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
+  # web-page:
+  #   build:
+  #     context: ./web
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   image: web-page:latest
+  #   container_name: cthulhu-web-page
+  #   init: true
+  #   ports:
+  #     - "8000:8000"
+  #   expose:
+  #     - 8000
+  #   volumes:
+  #     - ./web/logs:/app/logs
+  #     - ./web/data:/app/data
+  #     - ./web/static:/app/static
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - MONGO_HOST=mongo
+  #     - POSTGRES_HOST=postgres
+  #     - UVICON_HOST=0.0.0.0
+  #   env_file:
+  #     - .env
+  #   entrypoint: ["uvicorn"]
+  #   command: ["webapp:app", "--host=0.0.0.0", "--port=8000"]
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "50m"
+  #       max-file: "2"
 
-  web-etl:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    image: web-etl:latest
-    container_name: cthulhu-web-etl
-    init: true
-    volumes:
-      - ./web/logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_HOST=mongo
-      - POSTGRES_HOST=postgres
-    env_file:
-      - .env
-    entrypoint: ["python"]
-    command: ["-m", "etl"]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
+  # web-etl:
+  #   build:
+  #     context: ./web
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   image: web-etl:latest
+  #   container_name: cthulhu-web-etl
+  #   init: true
+  #   volumes:
+  #     - ./web/logs:/app/logs
+  #     - ./web/data:/app/data
+  #     - ./web/static:/app/static
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - MONGO_HOST=mongo
+  #     - POSTGRES_HOST=postgres
+  #   env_file:
+  #     - .env
+  #   entrypoint: ["python"]
+  #   command: ["-m", "etl"]
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "50m"
+  #       max-file: "2"
 
   db-etl:
     build:
@@ -75,7 +75,7 @@ services:
     env_file:
       - .env
     entrypoint: ["python"]
-    command: ["-m", "main"]
+    command: ["-m", "etl"]
     logging:
       driver: "json-file"
       options:
@@ -161,6 +161,27 @@ services:
       - 5432
     restart: always
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-server
+    command: prefect server start
+    environment:
+      - PREFECT_UI_URL=http://localhost:4200/api
+      - PREFECT_API_URL=http://localhost:4200/api
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+    ports:
+      - "4200:4200"
+    restart: unless-stopped
+
+  prefect-worker:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-worker
+    command: prefect worker start --pool default-agent-pool
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+    restart: unless-stopped
+
 
 networks:
   default:
