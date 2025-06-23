@@ -23,7 +23,7 @@ TEXT_MODEL_SUMMARIZER = env.str("TEXT_MODEL_SUMMARIZER")
 TEXT_MODEL_MAX_TOKENS = env.int("TEXT_MODEL_MAX_TOKENS")
 
 CTHULHU_IMAGE_MODEL = "dall-e-3"
-CTHULHU_IMAGE_DIR = Path("data", "images")
+CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 
 litellm.openai_key = OPENAI_API_KEY

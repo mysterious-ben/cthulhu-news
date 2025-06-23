@@ -3,7 +3,7 @@
 .gitignore
 
 # Python
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -83,3 +83,8 @@ docker-compose*
 # Project specific
 drafts/
 .claude/
+
+# Data
+data/
+**/data/
+**/mongodb.tar

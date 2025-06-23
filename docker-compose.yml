@@ -150,8 +150,8 @@ services:
     init: true
     volumes:
       - ./logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
+      - ./web/data:/app/web/data
+      - ./web/static:/app/web/static
     environment:
       - PUID=1000
       - PGID=1000
@@ -182,8 +182,8 @@ services:
       - 8000
     volumes:
       - ./logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
+      - ./web/data:/app/web/data
+      - ./web/static:/app/web/static
     environment:
       - PUID=1000
       - PGID=1000

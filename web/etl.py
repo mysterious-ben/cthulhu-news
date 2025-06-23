@@ -36,7 +36,7 @@ MONGO_NEWS_DB = "news"
 MONGO_NEWS_COLLECTION = "gnews"
 CTHULHU_DEFAULT_FIRST_TIMESTAMP = parser.parse(env.str("CTHULHU_DEFAULT_FIRST_TIMESTAMP"))
 CTHULHU_IMAGE_MODEL = "dall-e-3"
-CTHULHU_IMAGE_DIR = Path("data", "images")
+CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 
 init_loguru(file_path="logs/web_etl_log.log")

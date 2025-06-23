@@ -25,7 +25,7 @@ load_dotenv(find_dotenv())
 CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 HTML_STATIC_DIR = Path(__file__).parent / "static"
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 CTHULHU_NEWS_CACHE_FOR_X_SECONDS = env.float("CTHULHU_NEWS_CACHE_FOR_X_SECONDS")
 
 
@@ -50,33 +50,31 @@ logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
 def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> None:
     static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
     for article in cthulhu_articles:
-        if "cthulhu_image_filename" in article["image_meta"]:
-            image_filename = article["image_meta"]["cthulhu_image_filename"]
+        if (
+            "cthulhu_image_filename" in article["image_meta"]
+        ):
+            image_filename: str = article["image_meta"]["cthulhu_image_filename"]
+            logger.debug(f"processing article image: {image_filename}")
+            logger.debug(f"image_dir={CTHULHU_IMAGE_DIR.absolute()}")
             image_path = CTHULHU_IMAGE_DIR / image_filename
-            # TO DO: remove this check later (only required once)
-            if "cthulhu_image_name" not in article["image_meta"]:
-                article["image_meta"]["cthulhu_image_name"] = str(
-                    Path(image_filename).stem
-                )
-            image_name = article["image_meta"]["cthulhu_image_name"]
-            for img_type, img_params in STATIC_IMAGE_TYPES.items():
-                static_image_path: Path = (
-                    static_image_dir / f"{image_name}-{img_type}.jpg"
-                )
-                if not static_image_path.exists():
-                    with Image.open(image_path) as img:
-                        if img.mode in ("RGBA", "P"):
-                            img = img.convert("RGB")
-                        if img_params["size"] is not None:
-                            img = img.resize(
-                                img_params["size"], Image.Resampling.LANCZOS
-                            )
-                        img.save(
-                            static_image_path, "JPEG", quality=img_params["jpg_quality"]
-                        )
-                    logger.debug(f"created static image path={static_image_path}")
+            if image_path.exists():
+                article["image_meta"]["cthulhu_image_name"] = str(Path(image_filename).stem)
+                image_name = article["image_meta"]["cthulhu_image_name"]
+                for img_type, img_params in STATIC_IMAGE_TYPES.items():
+                    static_image_path: Path = static_image_dir / f"{image_name}-{img_type}.jpg"
+                    if not static_image_path.exists():
+                        with Image.open(image_path) as img:
+                            if img.mode in ("RGBA", "P"):
+                                img = img.convert("RGB")
+                            if img_params["size"] is not None:
+                                img = img.resize(img_params["size"], Image.Resampling.LANCZOS)
+                            img.save(static_image_path, "JPEG", quality=img_params["jpg_quality"])
+                        logger.debug(f"created static image path={static_image_path}")
+            else:
+                logger.warning(f"image file not found: {image_path}")
         else:
-            logger.warning(f"no image image_filename={image_filename}")
+            logger.warning(f"no image for article '{article['news_title']}'")
+        article["published_at"] = article["news_published_at"].isoformat()
         if article["reactions"] is not None:
             for comment in article["reactions"]["comments"]:
                 if "author" in comment:
@@ -85,9 +83,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> No
                     )
 
 
-@cachetools.cached(
-    cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS)
-)
+@cachetools.cached(cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
 def _get_cthulhu_articles_cached(article_id: Optional[int]) -> list[mapping.Scene]:
     return dbu.load_formatted_cthulhu_articles(article_id=article_id)
 
@@ -111,9 +107,7 @@ async def news_main_page(request: Request):
 def _assert_one_article_exists(news_articles: list, article_id: int):
     if article_id is not None:
         if len(news_articles) == 0:
-            raise HTTPException(
-                404, detail=f"The article not found article_id={article_id}"
-            )
+            raise HTTPException(404, detail=f"The article not found article_id={article_id}")
         elif len(news_articles) > 1:
             raise HTTPException(
                 500,
@@ -143,9 +137,7 @@ async def react_to_article(
     vote: str, article_id: int, user: Optional[str] = None
 ) -> PlainTextResponse:
     dbu.inc_cthulhu_article_vote(article_id, vote, user)
-    logger.info(
-        f"reacted to the article article_id={article_id} vote={vote} user={user}"
-    )
+    logger.info(f"reacted to the article article_id={article_id} vote={vote} user={user}")
     new_vote_counts = dbu.get_cthulhu_article_votes(article_id=article_id)
     assert new_vote_counts is not None
     new_count = new_vote_counts[vote]
@@ -179,7 +171,5 @@ async def submit_comment(
     # article["meta"]["comments"] = [{"author": author, "comment": comment}]
 
     context = {"request": request, "article": article}
-    logger.info(
-        f"commented the article article_id={article_id} comment='{comment[:15]}'"
-    )
+    logger.info(f"commented the article article_id={article_id} comment='{comment[:15]}'")
     return templates.TemplateResponse("comments.html", context)
