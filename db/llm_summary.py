@@ -1,16 +1,17 @@
-import json
-
+import litellm
 from envparse import env
 from loguru import logger
-from openai import OpenAI
 from dotenv import find_dotenv, load_dotenv
+
+from shared.llm_utils import get_llm_json_response
 
 load_dotenv(find_dotenv())
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-OPENAI_GPT_MODEL = env.str("TEXT_MODEL_SUMMARIZER")
-OPENAI_GPT_MAX_TOKENS = env.int("TEXT_MODEL_SUMMARY_MAX_TOKENS")
+TEXT_MODEL_SUMMARIZER = env.str("TEXT_MODEL_SUMMARIZER")
+TEXT_MODEL_MAX_TOKENS = env.int("TEXT_MODEL_MAX_TOKENS")
 
+litellm.openai_key = OPENAI_API_KEY
 
 def _parse_gpt_json_response(expected_fields: dict, response_json: dict) -> dict:
     formatted_gpt_json = {}
@@ -36,7 +37,6 @@ def _parse_gpt_json_response(expected_fields: dict, response_json: dict) -> dict
 
 
 def add_gpt_info(news_listings: list[dict]) -> None:
-    client = OpenAI(api_key=OPENAI_API_KEY)
     gpt_role = "You're a news editor"
     gpt_query = (
         "Return a json file based on the news article below. "
@@ -86,22 +86,13 @@ def add_gpt_info(news_listings: list[dict]) -> None:
     for listing in news_listings:
         if "full_text" in listing:
             text = listing["full_text"]
-            gpt_messages = [
-                {"role": "system", "content": gpt_role},
-                {"role": "user", "content": gpt_query.format(text=text)},
-            ]
             try:
-                openai_response = client.chat.completions.create(
-                    model=OPENAI_GPT_MODEL,
-                    messages=gpt_messages,  # type: ignore
-                    stream=False,
-                    max_tokens=OPENAI_GPT_MAX_TOKENS,
-                    n=1,
-                    stop=None,
-                    temperature=0.5,
-                    response_format={"type": "json_object"},
+                response_json = get_llm_json_response(
+                    gpt_role=gpt_role,
+                    gpt_query=gpt_query.format(text=text),
+                    gpt_model=TEXT_MODEL_SUMMARIZER,
+                    gpt_max_tokens=TEXT_MODEL_MAX_TOKENS,
                 )
-                response_json = json.loads(openai_response.choices[0].message.content)
                 formatted_response_json = _parse_gpt_json_response(expected_fields, response_json)
                 listing.update({f"gpt_{k}": v for k, v in formatted_response_json.items()})
                 logger.debug(f"added gpt generated fields title='{listing['title']}'")

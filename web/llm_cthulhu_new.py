@@ -1,6 +1,5 @@
 import base64
 import copy
-import json
 import random
 import time
 from datetime import datetime
@@ -10,10 +9,11 @@ import litellm
 from envparse import env
 from loguru import logger
 from dotenv import find_dotenv, load_dotenv
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 import web.llm_cthulhu_prompts as prompts
 from web.mapping import WinCounters, Scene, NewsArticle
+
+from shared.llm_utils import get_llm_json_response
 
 load_dotenv(find_dotenv())
 
@@ -35,7 +35,7 @@ def _str_to_filename(string: str) -> str:
     )
 
 
-def _parse_gpt_json_response(
+def _parse_llm_json_response(
     expected_fields: dict, response_json: dict, raise_on_error: bool = True
 ) -> dict:
     formatted_gpt_json = {}
@@ -66,34 +66,6 @@ def _parse_gpt_json_response(
             else:
                 logger.warning(f"incorrect gpt value field={field} value={value}")
     return formatted_gpt_json
-
-
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(1.))
-def _get_gpt_json_response(
-    gpt_role: str,
-    gpt_query: str,
-    gpt_model: str,
-    gpt_max_tokens: int,
-    expected_fields: dict,
-) -> dict:
-    gpt_messages = [
-        {"role": "system", "content": gpt_role},
-        {"role": "user", "content": gpt_query},
-    ]
-    response = litellm.completion(
-        model=gpt_model,  # Can be "gpt-4", "claude-3-opus", "gemini-pro", etc.
-        messages=gpt_messages,  # type: ignore
-        stream=False,
-        max_tokens=gpt_max_tokens,
-        n=1,
-        stop=None,
-        frequency_penalty=0,
-        temperature=0.5,
-        response_format={"type": "json_object"},
-    )
-    response_json = json.loads(response.choices[0].message.content)  # type: ignore
-    formatted_response_json = _parse_gpt_json_response(expected_fields, response_json)
-    return formatted_response_json
 
 
 def _change_protagonists(protagonists: str) -> str:
@@ -231,12 +203,16 @@ def generate_cthulhu_news(
             scenes_so_far=scenes_so_far, new_scene=scene
         )
 
-        scene_response_json = _get_gpt_json_response(
+        response_json = get_llm_json_response(
             gpt_role=prompts.scene_role_prompt,
             gpt_query=scene_prompt,
             gpt_model=gpt_model_writer,
             gpt_max_tokens=gpt_max_tokens,
+        )
+        scene_response_json = _parse_llm_json_response(
             expected_fields=prompts.scene_expected_json_fields,
+            response_json=response_json,
+            raise_on_error=True,
         )
 
         scene["scene_title"] = scene_response_json["scene_title"]
@@ -249,12 +225,16 @@ def generate_cthulhu_news(
             scenes=scenes_so_far + [scene]
         )
 
-        summary_response_json = _get_gpt_json_response(
+        response_json = get_llm_json_response(
             gpt_role=prompts.summary_role_prompt,
             gpt_query=summary_prompt,
             gpt_model=gpt_model_summarizer,
             gpt_max_tokens=gpt_max_tokens,
+        )
+        summary_response_json = _parse_llm_json_response(
             expected_fields=prompts.summary_expected_json_fields,
+            response_json=response_json,
+            raise_on_error=True,
         )
         scene["story_summary"] = summary_response_json["story_summary"]
         logger.debug(

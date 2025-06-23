@@ -20,7 +20,7 @@ from loguru import logger
 from logutil import init_loguru
 from pymongo.errors import BulkWriteError
 
-from llm_summary import add_gpt_info
+from db.llm_summary import add_gpt_info
 
 load_dotenv(find_dotenv())
 
@@ -40,11 +40,11 @@ NEWS_QUERIES = ["finance", "energy", "weather", "murders", "funny"]
 NEWS_QUERY_EVERY_X_SECONDS = env.int("NEWS_QUERY_EVERY_X_SECONDS")
 NEWS_QUERY_WINDOW_EXTENSION_SECONDS = env.int("NEWS_QUERY_WINDOW_EXTENSION_SECONDS")
 
-init_loguru(file_path="logs/log.log")
-
+init_loguru(file_path="logs/db_etl_log.log")
 logger.info("downloadeding nltk punkt...")
 # nltk.download("punkt", download_dir=NLTK_DOWNLOADS_DIR, quiet=True, raise_on_error=True)
 nltk.download("punkt", raise_on_error=True)
+nltk.download("punkt_tab", raise_on_error=True)
 logger.info("downloaded nltk punkt")
 
 
@@ -150,7 +150,7 @@ def load_news(
     query: str,
     from_: Optional[datetime],
     to_: Optional[datetime],
-):
+) -> None:
     """Load a news article, add a GPT summary and save to the local db"""
 
     news_listings = get_news_links_gnews(
@@ -169,12 +169,16 @@ def load_news(
         logger.info("no news articles to parse and save (skip)")
 
 
-@task(name="load_news_for_query", retries=2, retry_delay_seconds=30)
+@task(
+    name="load_news_for_query",
+    task_run_name="load_news_for_query-{query}",
+    retries=2,
+    retry_delay_seconds=30,
+)
 def load_news_task(query, from_, to_=None):
     """Task to load news for a specific query"""
-    logger.info(f"Loading news for query: {query}")
-    load_news(query, from_=from_, to_=to_)
-    time.sleep(1)
+    logger.info(f"start task to load news for query: {query}")
+    return load_news(query, from_=from_, to_=to_)
 
 
 @flow(name="load_all_recent_news", log_prints=True)
@@ -193,8 +197,9 @@ def load_all_recent_news_flow():
 
 # @click.command("serve")
 def start_news_etl_with_serve():
-    """Start the news ETL using Prefect serve (blocking)"""
+    """Start the normal news ETL using Prefect serve (blocking)"""
 
+    logger.info("serving the normal news ETL...")
     schedule = Interval(
         timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
         anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5),
@@ -203,29 +208,9 @@ def start_news_etl_with_serve():
         name="news-etl-deployment",
         schedule=schedule,
         tags=["news", "etl"],
-        description="Load news articles periodically",
+        description="Load normal news articles periodically",
     )
-
-# @click.command("deploy")
-def deploy_news_etl():
-    """Deploy the news ETL to Prefect server"""
-    
-    schedule = Interval(
-        timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
-        anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5)
-    )
-    load_all_recent_news_flow.deploy(
-        name="news-etl-deployment",
-        schedule=schedule,
-        work_pool_name="default-agent-pool",
-        tags=["news", "etl"],
-        description="Load news articles periodically"
-    )
-    print("Deployment created: news-etl-deployment")
-    print("To run this deployment, start a worker:")
-    print("  prefect worker start --pool default-agent-pool")
 
 
 if __name__ == "__main__":
-    # logger.info("use 'deploy' or 'serve' commands to run the news ETL")
-    deploy_news_etl()
+    start_news_etl_with_serve()

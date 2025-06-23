@@ -14,7 +14,7 @@ from pgvector.psycopg import register_vector
 # from psycopg_pool import AsyncConnectionPool
 from psycopg.types.json import Jsonb, set_json_dumps, set_json_loads
 
-import mapping as mapping
+import web.mapping as mapping
 
 
 POSTGRES_HOST = env.str("POSTGRES_HOST")

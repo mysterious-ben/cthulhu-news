@@ -17,12 +17,12 @@ from PIL import Image
 from loguru import logger
 from logutil import init_loguru
 
-import mapping as mapping
-import db_utils as db
+import web.mapping as mapping
+import web.db_utils as dbu
 
 load_dotenv(find_dotenv())
 
-CTHULHU_IMAGE_DIR = Path("data", "images")
+CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
 CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 HTML_STATIC_DIR = Path(__file__).parent / "static"
 templates = Jinja2Templates(directory="templates")
@@ -43,7 +43,7 @@ app.mount(
     name="static",
 )
 
-init_loguru(file_path="logs/log.log")
+init_loguru(file_path="logs/web_app_log.log")
 logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
 
 
@@ -89,7 +89,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> No
     cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS)
 )
 def _get_cthulhu_articles_cached(article_id: Optional[int]) -> list[mapping.Scene]:
-    return db.load_formatted_cthulhu_articles(article_id=article_id)
+    return dbu.load_formatted_cthulhu_articles(article_id=article_id)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -142,11 +142,11 @@ async def news_article_page(request: Request, article_id: int):
 async def react_to_article(
     vote: str, article_id: int, user: Optional[str] = None
 ) -> PlainTextResponse:
-    db.inc_cthulhu_article_vote(article_id, vote, user)
+    dbu.inc_cthulhu_article_vote(article_id, vote, user)
     logger.info(
         f"reacted to the article article_id={article_id} vote={vote} user={user}"
     )
-    new_vote_counts = db.get_cthulhu_article_votes(article_id=article_id)
+    new_vote_counts = dbu.get_cthulhu_article_votes(article_id=article_id)
     assert new_vote_counts is not None
     new_count = new_vote_counts[vote]
     return PlainTextResponse(f"""{new_count}""")
@@ -171,7 +171,7 @@ async def submit_comment(
         "accepted": False,
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
     }
-    db.submit_cthulhu_article_comment(article_id, comment_json, user)
+    dbu.submit_cthulhu_article_comment(article_id, comment_json, user)
     news_articles = _get_cthulhu_articles_cached(article_id=article_id)
     _assert_one_article_exists(news_articles, article_id)
     _prepare_news_articles_for_html(news_articles)

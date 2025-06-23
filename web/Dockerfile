@@ -13,7 +13,7 @@ COPY . /app
 
 RUN \
   pip install pip -U && \
-  pip install --no-cache-dir -r requirements.txt
+  pip install --no-cache-dir -r web/requirements.txt
 
 STOPSIGNAL SIGINT
 
