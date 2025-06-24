@@ -21,6 +21,7 @@ from logutil import init_loguru
 from pymongo.errors import BulkWriteError
 
 from db.llm_summary import add_gpt_info
+from shared.paths import DB_ETL_LOG_PATH
 
 load_dotenv(find_dotenv())
 
@@ -40,7 +41,7 @@ NEWS_QUERIES = ["finance", "energy", "weather", "murders", "funny"]
 NEWS_QUERY_EVERY_X_SECONDS = env.int("NEWS_QUERY_EVERY_X_SECONDS")
 NEWS_QUERY_WINDOW_EXTENSION_SECONDS = env.int("NEWS_QUERY_WINDOW_EXTENSION_SECONDS")
 
-init_loguru(file_path="logs/db_etl_log.log")
+init_loguru(file_path=str(DB_ETL_LOG_PATH))
 logger.info("downloadeding nltk punkt...")
 # nltk.download("punkt", download_dir=NLTK_DOWNLOADS_DIR, quiet=True, raise_on_error=True)
 nltk.download("punkt", raise_on_error=True)

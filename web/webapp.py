@@ -19,13 +19,11 @@ from logutil import init_loguru
 
 import web.mapping as mapping
 import web.db_utils as dbu
+from shared.paths import CTHULHU_IMAGE_DIR, HTML_STATIC_DIR, TEMPLATES_DIR, WEB_APP_LOG_PATH
 
 load_dotenv(find_dotenv())
 
-CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
-CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
-HTML_STATIC_DIR = Path(__file__).parent / "static"
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 CTHULHU_NEWS_CACHE_FOR_X_SECONDS = env.float("CTHULHU_NEWS_CACHE_FOR_X_SECONDS")
 
 
@@ -43,7 +41,7 @@ app.mount(
     name="static",
 )
 
-init_loguru(file_path="logs/web_app_log.log")
+init_loguru(file_path=str(WEB_APP_LOG_PATH))
 logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
 
 
@@ -74,7 +72,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> No
                 logger.warning(f"image file not found: {image_path}")
         else:
             logger.warning(f"no image for article '{article['news_title']}'")
-        article["published_at"] = article["news_published_at"].isoformat()
+        article["published_at"] = article["news_published_at"].isoformat()  # type: ignore
         if article["reactions"] is not None:
             for comment in article["reactions"]["comments"]:
                 if "author" in comment:

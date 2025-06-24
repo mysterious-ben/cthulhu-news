@@ -4,7 +4,6 @@
 
 import itertools
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional, Iterable
 
 import pymongo
@@ -20,6 +19,7 @@ from time import sleep
 from web.llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
 import web.mapping as mapping
 import web.db_utils as dbu
+from shared.paths import CTHULHU_IMAGE_DIR, WEB_ETL_LOG_PATH
 
 load_dotenv(find_dotenv())
 
@@ -36,10 +36,8 @@ MONGO_NEWS_DB = "news"
 MONGO_NEWS_COLLECTION = "gnews"
 CTHULHU_DEFAULT_FIRST_TIMESTAMP = parser.parse(env.str("CTHULHU_DEFAULT_FIRST_TIMESTAMP"))
 CTHULHU_IMAGE_MODEL = "dall-e-3"
-CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
-CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 
-init_loguru(file_path="logs/web_etl_log.log")
+init_loguru(file_path=str(WEB_ETL_LOG_PATH))
 logger.debug(f"CTHULHU_IMAGE_DIR={CTHULHU_IMAGE_DIR.absolute()}")
 
 

@@ -3,7 +3,6 @@ import copy
 import random
 import time
 from datetime import datetime
-from pathlib import Path
 
 import litellm
 from envparse import env
@@ -12,8 +11,8 @@ from dotenv import find_dotenv, load_dotenv
 
 import web.llm_cthulhu_prompts as prompts
 from web.mapping import WinCounters, Scene, NewsArticle
-
 from shared.llm_utils import get_llm_json_response
+from shared.paths import CTHULHU_IMAGE_DIR
 
 load_dotenv(find_dotenv())
 
@@ -23,8 +22,6 @@ TEXT_MODEL_SUMMARIZER = env.str("TEXT_MODEL_SUMMARIZER")
 TEXT_MODEL_MAX_TOKENS = env.int("TEXT_MODEL_MAX_TOKENS")
 
 CTHULHU_IMAGE_MODEL = "dall-e-3"
-CTHULHU_IMAGE_DIR = Path(__file__).parent / "data" / "images"
-CTHULHU_IMAGE_DIR.mkdir(exist_ok=True, parents=True)
 
 litellm.openai_key = OPENAI_API_KEY
 

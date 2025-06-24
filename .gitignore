@@ -38,6 +38,7 @@ drafts/data/*
 *.db
 *.tar
 prefect/data/memo_store.toml
+data/
 
 # App generated files: Logs
 *.log
