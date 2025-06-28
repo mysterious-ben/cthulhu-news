@@ -45,19 +45,22 @@ init_loguru(file_path=str(WEB_APP_LOG_PATH))
 logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
 
 
-def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> None:
+# @cachetools.cached(cachetools.TTLCache(maxsize=10, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
+def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> list[dict]:
     static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
+    html_articles = []
+
     for article in cthulhu_articles:
-        if (
-            "cthulhu_image_filename" in article["image_meta"]
-        ):
+        # Process image if exists
+        image_meta = {}
+        if "cthulhu_image_filename" in article["image_meta"]:
             image_filename: str = article["image_meta"]["cthulhu_image_filename"]
             logger.debug(f"processing article image: {image_filename}")
             logger.debug(f"image_dir={CTHULHU_IMAGE_DIR.absolute()}")
             image_path = CTHULHU_IMAGE_DIR / image_filename
             if image_path.exists():
-                article["image_meta"]["cthulhu_image_name"] = str(Path(image_filename).stem)
-                image_name = article["image_meta"]["cthulhu_image_name"]
+                image_name = str(Path(image_filename).stem)
+                image_meta["cthulhu_image_name"] = image_name
                 for img_type, img_params in STATIC_IMAGE_TYPES.items():
                     static_image_path: Path = static_image_dir / f"{image_name}-{img_type}.jpg"
                     if not static_image_path.exists():
@@ -72,13 +75,38 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> No
                 logger.warning(f"image file not found: {image_path}")
         else:
             logger.warning(f"no image for article '{article['news_title']}'")
-        article["published_at"] = article["news_published_at"].isoformat()  # type: ignore
+
+        # Mask the narrator name
+        masked_narrator = "".join(" " if x == " " else "█" for x in article["scene_narrator"])
+
+        # Process reactions with masked author names
+        reactions = {"votes": article["reactions"]["votes"], "comments": []}
         if article["reactions"] is not None:
             for comment in article["reactions"]["comments"]:
-                if "author" in comment:
-                    comment["author"] = "".join(
-                        " " if x == " " else "█" for x in comment["author"]
+                processed_comment = comment.copy()
+                if "author" in processed_comment:
+                    processed_comment["author"] = "".join(
+                        " " if x == " " else "█" for x in processed_comment["author"]
                     )
+                reactions["comments"].append(processed_comment)
+
+        # Create HTML-ready article with only template fields
+        html_article = {
+            "scene_number": article["scene_number"],
+            "news_title": article["news_title"],
+            "news_summary": article["news_summary"],
+            "news_source": article["news_source"],
+            "news_url": article["news_url"],
+            "scene_title": article["scene_title"],
+            "scene_text": article["scene_text"],
+            "scene_narrator": masked_narrator,
+            "published_at": article["news_published_at"].isoformat(),
+            "image_meta": image_meta,
+            "reactions": reactions,
+        }
+        html_articles.append(html_article)
+
+    return html_articles
 
 
 @cachetools.cached(cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
@@ -91,10 +119,10 @@ async def news_main_page(request: Request):
     start = datetime.now()
     logger.debug("loading the news page...")
 
-    news_articles = _get_cthulhu_articles_cached()
-    _prepare_news_articles_for_html(news_articles)
+    cthulhu_articles = _get_cthulhu_articles_cached()
+    html_articles = _prepare_news_articles_for_html(cthulhu_articles)
     response = templates.TemplateResponse(
-        "news_main_page.html", {"request": request, "news_articles": news_articles}
+        "news_main_page.html", {"request": request, "news_articles": html_articles}
     )
 
     elapsed = (datetime.now() - start).total_seconds()
@@ -118,12 +146,12 @@ async def news_article_page(request: Request, scene_number: int):
     start = datetime.now()
     logger.debug("loading the article page...")
 
-    news_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
-    _assert_one_article_exists(news_articles, scene_number)
-    _prepare_news_articles_for_html(news_articles)
+    cthulhu_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
+    _assert_one_article_exists(cthulhu_articles, scene_number)
+    html_articles = _prepare_news_articles_for_html(cthulhu_articles)
 
     response = templates.TemplateResponse(
-        "news_article.html", {"request": request, "article": news_articles[0]}
+        "news_article.html", {"request": request, "article": html_articles[0]}
     )
     elapsed = (datetime.now() - start).total_seconds()
     logger.info(f"prepared the article page elapsed={elapsed:.2f}s")
@@ -162,11 +190,10 @@ async def submit_comment(
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
     }
     dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)
-    news_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
-    _assert_one_article_exists(news_articles, scene_number)
-    _prepare_news_articles_for_html(news_articles)
-    article = news_articles[0]
-    # article["meta"]["comments"] = [{"author": author, "comment": comment}]
+    cthulhu_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
+    _assert_one_article_exists(cthulhu_articles, scene_number)
+    html_articles = _prepare_news_articles_for_html(cthulhu_articles)
+    article = html_articles[0]
 
     context = {"request": request, "article": article}
     logger.info(f"commented the article scene_number={scene_number} comment='{comment[:15]}'")
