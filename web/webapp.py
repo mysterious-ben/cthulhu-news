@@ -195,6 +195,6 @@ async def submit_comment(
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
     article = html_articles[0]
 
-    context = {"request": request, "article": article}
+    context = {"request": request, "article": article, "comment_just_submitted": True}
     logger.info(f"commented the article scene_number={scene_number} comment='{comment[:15]}'")
     return templates.TemplateResponse("comments.html", context)

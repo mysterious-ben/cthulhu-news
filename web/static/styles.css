@@ -267,11 +267,14 @@ hr {
 }
 
 .comments-box {
-    border-top: 1px solid var(--news-border-color);
-    border-bottom: 1px solid var(--news-border-color);
-    padding: 15px 25px;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
+    /* border-top: 1px solid var(--news-border-color); */
+    /* border-bottom: 1px solid var(--news-border-color); */
+    /* padding-top: 10px; */
+    padding-left: 15px;
+    padding-right: 15px;
+    /* padding-bottom: 10px; */
+    margin-top: 2rem;
+    margin-bottom: 1rem;
 }
 
 .others-say {
@@ -311,6 +314,10 @@ textarea {
     font-weight: thin;
     font-size: 0.8rem;
     display:inline;
+}
+
+.comments-title + ul li {
+    margin-bottom: 5px;
 }
 
 .no-comments {

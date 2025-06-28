@@ -78,9 +78,9 @@ class NewsArticle {
     }
 
     commentSubmit = async (articleId) => {
-        if (this.commentedArticles.includes(articleId)) return;
+        if (this.commentedArticles.includes(articleId)) return false;
 
         this.setCommentedArticles(articleId);
-        this.updateCommentForms();
+        return true;
     }
 }

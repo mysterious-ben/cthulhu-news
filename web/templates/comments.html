@@ -1,26 +1,31 @@
 <!-- templates/comments.html -->
 
 <h2 class="comments-title">Voices of the Witnesses:</h2>
-{% if article['reactions']['comments'] %}
-{% for comment in article['reactions']['comments'] %}
-<div class="comment" style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div class="comment-content">{{ comment['comment'] }}</div>
-    <div class="comment-source" style="flex-shrink: 0; margin-left: 10px;">(reported by {{ comment['author'] }} on {{
-        comment['created_at'][:10] }})</div>
-</div>
-{% endfor %}
+<ul>
+    {% if article['reactions']['comments'] %}
+    {% for comment in article['reactions']['comments'] %}
+    <li>
+        <div class="comment-content">{{ comment['comment'] }} <span class="comment-source">(reported by {{
+                comment['author'] }} on {{
+                comment['created_at'][:10] }})</span></div>
+    </li>
+    {% endfor %}
+</ul>
 {% else %}
 <div class="no-comments">No witnesses yet... Do you know anything about it?</div>
 {% endif %}
 
-<hr />
+<br />
 
-<form data-comment-form="{{ article['scene_number'] }}"
-    hx-post="/submit_comment/{{ article['scene_number'] }}" hx-swap="outerHTML"
-    hx-target="#comments-{{ article['scene_number'] }}"
-    onsubmit="news_article.commentSubmit(`{{ article['scene_number'] }}`);">
-    <textarea name="comment" rows="3" placeholder="Your rumor about this event..."
-        required></textarea><br />
+{% if comment_just_submitted %}
+<div class="thanks-message" id="thanks-message-{{ article['scene_number'] }}">
+    (your voice have been heard)
+</div>
+{% else %}
+<form data-comment-form="{{ article['scene_number'] }}" hx-post="/submit_comment/{{ article['scene_number'] }}"
+    hx-swap="outerHTML" hx-target="#comments-{{ article['scene_number'] }}"
+    onsubmit="return news_article.commentSubmit(`{{ article['scene_number'] }}`);">
+    <textarea name="comment" rows="3" placeholder="Your rumor about this event..." required></textarea><br />
     <input type="text" name="author" placeholder="Your (fake) name" required style="float: right;"><br />
     <div style="clear: both; text-align: center;">
         <button class="button-comment" type="submit">Add a new rumour</button>
@@ -28,5 +33,6 @@
 </form>
 
 <div class="thanks-message" id="thanks-message-{{ article['scene_number'] }}" style="display:none;">
-    Your voice have been heard.
+    (your voice have been heard)
 </div>
+{% endif %}
