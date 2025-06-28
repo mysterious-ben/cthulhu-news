@@ -177,6 +177,20 @@ h4 {
     padding-right: 0.1rem;
 }
 
+.comment-source {
+    color: var(--deemed-font-color);
+    font-weight: thin;
+    font-size: 0.8rem;
+    text-align: right;
+    padding-right: 0.1rem;
+}
+
+.comments-title {
+    /* font-family: var(--truth-title-font), serif; */
+    font-size: 1.3rem;
+    text-align: center;
+}
+
 .truth-text {
     /* color: var(--truth-color); */
     /* -webkit-text-stroke: 1px #111; */
@@ -239,6 +253,8 @@ button:hover {
 .button-comment {
     margin-top: 5px;
     margin-left: 0;
+    /* float: center; */
+    text-align: center;
 }
 
 hr {
@@ -295,6 +311,13 @@ textarea {
     font-weight: thin;
     font-size: 0.8rem;
     display:inline;
+}
+
+.no-comments {
+    font-family: var(--truth-font);
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--deemed-font-color);
 }
 
 .thanks-message {

@@ -5,33 +5,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Cthulhu News</title>
-    <link
-        rel="stylesheet"
-        type="text/css"
-        href="/static/styles.css"
-    >
-    <link
-        id="favicon"
-        rel="icon"
-        type="image/x-icon"
-        href="/static/images/cobra.svg"
-    >
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/images/cobra.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
-    <script src="/static/js/news_page.js"></script>
+    <script src="/static/js/news_main_page.js"></script>
+    <script src="/static/js/news_article.js"></script>
 </head>
 
 <body>
     <div class="news-area">
         <h1 class="website-name">Cthulhu News</h1>
         {% for article in news_articles %}
-        <div
-            class="news-box"
-            id="article-{{ article['scene_number'] }}"
-        >
+        <div class="news-box" id="article-{{ article['scene_number'] }}">
             <h2 class="main-title">{{ article['news_title'] }}</h2>
             <p>{{ article['news_summary'] }}</p>
             <div class="news-source">
@@ -39,28 +25,32 @@
                 article['published_at'][:10] }})
             </div>
             <h2 class="facade-sign">But this is just the facade</h2>
-            <img
-                data-srcset="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-small.jpg 500w,
+            <img data-srcset="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-small.jpg 500w,
                 /static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-medium.jpg 1000w,
                 /static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-large.jpg 1500w"
                 data-src="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-default.jpg"
-                alt="News Image"
-                class="news-image"
-            >
+                alt="News Image" class="news-image">
             <h2 class="truth-title">{{ article['scene_title'] }}</h2>
             <p class="truth-text">{{ article['scene_text'] }}</p>
             <div class="news-source">
-                (reported by ███ ██████ on {{ article['published_at'][:10] }})
+                (reported by {{ article['scene_narrator'] }} on {{ article['published_at'][:10] }})
             </div>
 
-            <div style="text-align:center"> 
-                <button
-                    class="button"
-                    onclick="location.href='/article/{{ article['scene_number'] }}'"
-                >
+            <div class="news-reactions">
+                {% include 'reactions.html' %}
+            </div>
+
+            <div class="comments-box">
+                <section id="comments-{{ article['scene_number'] }}">
+                    {% include 'comments.html' %}
+                </section>
+            </div>
+
+            <!-- <div style="text-align:center">
+                <button class="button" onclick="location.href='/article/{{ article['scene_number'] }}'">
                     Go to the article →
                 </button>
-            </div>
+            </div> -->
 
         </div>
         {% endfor %}
