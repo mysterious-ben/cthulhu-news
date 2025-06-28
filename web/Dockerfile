@@ -9,11 +9,14 @@ RUN \
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 WORKDIR /app
-COPY . /app
+
+COPY web/requirements.txt /app/web/requirements.txt
 
 RUN \
   pip install pip -U && \
   pip install --no-cache-dir -r web/requirements.txt
+
+COPY . /app
 
 STOPSIGNAL SIGINT
 

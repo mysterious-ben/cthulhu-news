@@ -61,7 +61,6 @@ services:
   #       max-file: "2"
 
   postgres:
-    # image: postgres:17
     image: pgvector/pgvector:pg17
     container_name: cthulhu-postgres
     environment:

@@ -575,7 +575,7 @@ _sample_scenes: list[Scene] = [
             "detectives": {"curr": 0.8, "max": -0.2, "limit": 31.0},
         },
         "image_meta": {},
-        "reactions": {"votes": {"truth": 0.0, "lie": 0.0, "voted_by": []}, "comments": []},
+        "reactions": {"votes": {"truth": 0, "lie": 0, "voted_by": []}, "comments": []},
     },
 ]
 

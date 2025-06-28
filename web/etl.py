@@ -121,7 +121,7 @@ def create_and_upload_cthulhu_article(
         return 0
     elif len(news_articles) > 1:
         raise ValueError(f"Expected 1 news article, got {len(news_articles)}")
-    cthulhu_articles = dbu.load_formatted_cthulhu_articles(article_id=None)
+    cthulhu_articles = dbu.load_formatted_cthulhu_articles()
     to_2 = to_ if to_ is not None else datetime.now(tz=timezone.utc)
     new_cthulhu_articles = generate_cthulhu_news(cthulhu_articles, news_articles, [to_2])
     add_cthulhu_images(new_cthulhu_articles)

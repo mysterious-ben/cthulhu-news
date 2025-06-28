@@ -30,12 +30,12 @@
         {% for article in news_articles %}
         <div
             class="news-box"
-            id="article-{{ article['id'] }}"
+            id="article-{{ article['scene_number'] }}"
         >
-            <h2 class="main-title">{{ article['title'] }}</h2>
-            <p>{{ article['original_text'] }}</p>
+            <h2 class="main-title">{{ article['news_title'] }}</h2>
+            <p>{{ article['news_summary'] }}</p>
             <div class="news-source">
-                (reported by <a href="{{ article['url'] }}">{{ article['media_source_name'] }}</a> on {{
+                (reported by <a href="{{ article['news_url'] }}">{{ article['news_source'] }}</a> on {{
                 article['published_at'][:10] }})
             </div>
             <h2 class="facade-sign">But this is just the facade</h2>
@@ -47,8 +47,8 @@
                 alt="News Image"
                 class="news-image"
             >
-            <h2 class="truth-title">{{ article['cthulhu_new_title'] }}</h2>
-            <p class="truth-text">{{ article['cthulhu_truth'] }}</p>
+            <h2 class="truth-title">{{ article['scene_title'] }}</h2>
+            <p class="truth-text">{{ article['scene_text'] }}</p>
             <div class="news-source">
                 (reported by ███ ██████ on {{ article['published_at'][:10] }})
             </div>
@@ -56,7 +56,7 @@
             <div style="text-align:center"> 
                 <button
                     class="button"
-                    onclick="location.href='/article/{{ article['id'] }}'"
+                    onclick="location.href='/article/{{ article['scene_number'] }}'"
                 >
                     Go to the article →
                 </button>

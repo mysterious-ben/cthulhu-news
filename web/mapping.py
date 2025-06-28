@@ -31,8 +31,8 @@ class WinCounters(TypedDict):
 
 
 class Votes(TypedDict):
-    truth: float
-    lie: float
+    truth: int
+    lie: int
     voted_by: list[str]
 
 
@@ -98,11 +98,11 @@ sql_table_columns: dict[str, str] = {
     "scene_vector": "VECTOR",
     "story_summary": "TEXT NOT NULL",
     "scene_ends_story": "BOOLEAN NOT NULL",
-    "scene_older_versions": "JSON NOT NULL",
-    "news_meta": "JSON NOT NULL",
-    "scene_meta": "JSON NOT NULL",
-    "image_meta": "JSON NOT NULL",
-    "reactions": "JSON NOT NULL",
+    "scene_older_versions": "JSONB NOT NULL",
+    "news_meta": "JSONB NOT NULL",
+    "scene_meta": "JSONB NOT NULL",
+    "image_meta": "JSONB NOT NULL",
+    "reactions": "JSONB NOT NULL",
 }
 
 

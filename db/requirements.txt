@@ -12,7 +12,7 @@ alembic==1.16.2
     # via prefect
 annotated-types==0.7.0
     # via pydantic
-anthropic==0.54.0
+anthropic==0.55.0
     # via cthulhu-news
 anyio==4.9.0
     # via
@@ -134,7 +134,7 @@ h11==0.16.0
     #   uvicorn
 h2==4.2.0
     # via httpx
-hf-xet==1.1.4 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.1.5 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 hpack==4.1.0
     # via h2
@@ -198,7 +198,7 @@ langcodes==3.5.0
     # via spacy
 language-data==1.3.0
     # via langcodes
-litellm==1.72.6.post1
+litellm==1.73.1
     # via cthulhu-news
 loguru==0.7.3
     # via logutil
@@ -215,7 +215,7 @@ mako==1.3.10
     # via alembic
 marisa-trie==1.2.1
     # via language-data
-markdown==3.8.1
+markdown==3.8.2
     # via apprise
 markdown-it-py==3.0.0
     # via rich
@@ -225,7 +225,7 @@ markupsafe==3.0.2
     #   mako
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.5.0
+multidict==6.5.1
     # via
     #   aiohttp
     #   yarl
@@ -238,14 +238,14 @@ newspaper3k==0.2.8
     # via cthulhu-news
 nltk==3.9.1
     # via newspaper3k
-numpy==2.3.0
+numpy==2.3.1
     # via
     #   blis
     #   spacy
     #   thinc
-oauthlib==3.3.0
+oauthlib==3.3.1
     # via requests-oauthlib
-openai==1.88.0
+openai==1.91.0
     # via
     #   cthulhu-news
     #   litellm
@@ -301,9 +301,9 @@ pydantic-core==2.33.2
     #   pydantic
 pydantic-extra-types==2.10.5
     # via prefect
-pydantic-settings==2.9.1
+pydantic-settings==2.10.1
     # via prefect
-pygments==2.19.1
+pygments==2.19.2
     # via rich
 pymongo==4.13.2
     # via cthulhu-news
@@ -314,7 +314,7 @@ python-dateutil==2.9.0.post0
     #   newspaper3k
     #   pendulum
     #   prefect
-python-dotenv==1.1.0
+python-dotenv==1.1.1
     # via
     #   cthulhu-news
     #   litellm
@@ -434,7 +434,7 @@ tinysegmenter==0.3
     # via newspaper3k
 tldextract==5.3.0
     # via newspaper3k
-tokenizers==0.21.1
+tokenizers==0.21.2
     # via litellm
 toml==0.10.2
     # via prefect
@@ -481,11 +481,11 @@ tzlocal==5.3.1
     # via dateparser
 ujson==5.10.0
     # via prefect
-urllib3==2.4.0
+urllib3==2.5.0
     # via
     #   docker
     #   requests
-uv==0.7.13
+uv==0.7.14
     # via prefect
 uvicorn==0.34.3
     # via prefect

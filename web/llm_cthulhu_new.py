@@ -149,7 +149,7 @@ def _create_new_scene_parameters(
         "image_meta": {},
         "reactions": {
             "comments": [],
-            "votes": {"truth": 0.0, "lie": 0.0, "voted_by": []},
+            "votes": {"truth": 0, "lie": 0, "voted_by": []},
         },
     }
 

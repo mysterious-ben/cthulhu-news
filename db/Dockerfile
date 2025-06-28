@@ -9,11 +9,14 @@ RUN \
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 WORKDIR /app
-COPY . /app
+
+COPY db/requirements.txt /app/db/requirements.txt
 
 RUN \
   pip install pip -U && \
   pip install --no-cache-dir -r db/requirements.txt
+
+COPY . /app
 
 STOPSIGNAL SIGINT
 

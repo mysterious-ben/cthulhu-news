@@ -82,8 +82,8 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> No
 
 
 @cachetools.cached(cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
-def _get_cthulhu_articles_cached(article_id: Optional[int]) -> list[mapping.Scene]:
-    return dbu.load_formatted_cthulhu_articles(article_id=article_id)
+def _get_cthulhu_articles_cached(scene_number: Optional[int] = None) -> list[mapping.Scene]:
+    return dbu.load_formatted_cthulhu_articles(scene_number=scene_number)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -91,10 +91,10 @@ async def news_main_page(request: Request):
     start = datetime.now()
     logger.debug("loading the news page...")
 
-    news_articles = _get_cthulhu_articles_cached(None)
+    news_articles = _get_cthulhu_articles_cached()
     _prepare_news_articles_for_html(news_articles)
     response = templates.TemplateResponse(
-        "news_page.html", {"request": request, "news_articles": news_articles}
+        "news_main_page.html", {"request": request, "news_articles": news_articles}
     )
 
     elapsed = (datetime.now() - start).total_seconds()
@@ -102,24 +102,24 @@ async def news_main_page(request: Request):
     return response
 
 
-def _assert_one_article_exists(news_articles: list, article_id: int):
-    if article_id is not None:
+def _assert_one_article_exists(news_articles: list, scene_number: int):
+    if scene_number is not None:
         if len(news_articles) == 0:
-            raise HTTPException(404, detail=f"The article not found article_id={article_id}")
+            raise HTTPException(404, detail=f"The article not found scene_number={scene_number}")
         elif len(news_articles) > 1:
             raise HTTPException(
                 500,
-                detail=f"Too many articles article_id={article_id} n={len(news_articles)}",
+                detail=f"Too many articles scene_number={scene_number} n={len(news_articles)}",
             )
 
 
-@app.get("/article/{article_id}", response_class=HTMLResponse)
-async def news_article_page(request: Request, article_id: int):
+@app.get("/article/{scene_number}", response_class=HTMLResponse)
+async def news_article_page(request: Request, scene_number: int):
     start = datetime.now()
     logger.debug("loading the article page...")
 
-    news_articles = _get_cthulhu_articles_cached(article_id=article_id)
-    _assert_one_article_exists(news_articles, article_id)
+    news_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
+    _assert_one_article_exists(news_articles, scene_number)
     _prepare_news_articles_for_html(news_articles)
 
     response = templates.TemplateResponse(
@@ -130,21 +130,21 @@ async def news_article_page(request: Request, article_id: int):
     return response
 
 
-@app.post("/react/{vote}/{article_id}")
+@app.post("/react/{vote}/{scene_number}")
 async def react_to_article(
-    vote: str, article_id: int, user: Optional[str] = None
+    vote: str, scene_number: int, user: Optional[str] = None
 ) -> PlainTextResponse:
-    dbu.inc_cthulhu_article_vote(article_id, vote, user)
-    logger.info(f"reacted to the article article_id={article_id} vote={vote} user={user}")
-    new_vote_counts = dbu.get_cthulhu_article_votes(article_id=article_id)
+    dbu.inc_cthulhu_article_vote(scene_number, vote, user)
+    logger.info(f"reacted to the article scene_number={scene_number} vote={vote} user={user}")
+    new_vote_counts = dbu.get_cthulhu_article_votes(scene_number=scene_number)
     assert new_vote_counts is not None
     new_count = new_vote_counts[vote]
     return PlainTextResponse(f"""{new_count}""")
 
 
-@app.post("/submit_comment/{article_id}")
+@app.post("/submit_comment/{scene_number}")
 async def submit_comment(
-    article_id: int,
+    scene_number: int,
     request: Request,
     author: str = Form(...),
     comment: str = Form(...),
@@ -161,13 +161,13 @@ async def submit_comment(
         "accepted": False,
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
     }
-    dbu.submit_cthulhu_article_comment(article_id, comment_json, user)
-    news_articles = _get_cthulhu_articles_cached(article_id=article_id)
-    _assert_one_article_exists(news_articles, article_id)
+    dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)
+    news_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
+    _assert_one_article_exists(news_articles, scene_number)
     _prepare_news_articles_for_html(news_articles)
     article = news_articles[0]
     # article["meta"]["comments"] = [{"author": author, "comment": comment}]
 
     context = {"request": request, "article": article}
-    logger.info(f"commented the article article_id={article_id} comment='{comment[:15]}'")
+    logger.info(f"commented the article scene_number={scene_number} comment='{comment[:15]}'")
     return templates.TemplateResponse("comments.html", context)

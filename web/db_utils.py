@@ -53,7 +53,7 @@ atexit.register(pgpool.close)
 def default_json_converter(o):
     if isinstance(o, datetime):
         return o.isoformat()
-    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+    raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
 
 set_json_dumps(partial(json.dumps, default=default_json_converter))
@@ -71,27 +71,33 @@ def init_local_news_db():
     with pgpool.connection() as conn:
         # conn.execute("""DROP TABLE news""")
 
-        sql_cols = ",".join(f"{k} {v}" for k, v in mapping.sql_table_columns.items())
-        sql_str = f"""\
-        CREATE TABLE IF NOT EXISTS news (
-            {sql_cols}
-        )"""
-        conn.execute(sql_str)  # type: ignore
+        col_definitions = []
+        for k, v in mapping.sql_table_columns.items():
+            col_def = sql.SQL("{} {}").format(
+                sql.Identifier(k),
+                sql.SQL(v)  # type: ignore[arg-type]
+            )
+            col_definitions.append(col_def)
+        
+        query = sql.SQL("CREATE TABLE IF NOT EXISTS news ({})").format(
+            sql.SQL(", ").join(col_definitions)
+        )
+        conn.execute(query)
         logger.info("initialized the local news db")
 
         # c.execute(f"""UPDATE news SET reactions = '{json.dumps(DEFAULT_NEWS_REACTIONS)}'""")
         # logger.warning("reset the reactions in the local news db")
 
 
-def _get_cthulhu_article(article_id: int) -> list[dict]:
+def _get_cthulhu_article(scene_number: int) -> list[dict]:
     """Get one Cthulhu article from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible"""
     with pgpool.connection() as conn:
         with conn.cursor() as c:
             c.execute(
-                "SELECT * FROM news WHERE id = %s ORDER BY scene_timestamp DESC",
-                (article_id,),
+                "SELECT * FROM news WHERE scene_number = %s ORDER BY scene_timestamp DESC",
+                (scene_number,),
             )
             row = c.fetchone()
             assert c.description is not None
@@ -126,25 +132,23 @@ def _process_if_json(value: str) -> bool:
         return False
 
 
-def load_formatted_cthulhu_articles(article_id: Optional[int]) -> list[mapping.Scene]:
+def load_formatted_cthulhu_articles(scene_number: Optional[int] = None) -> list[mapping.Scene]:
     """Get and format Cthulhu article(s) from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible
     """
     start = datetime.now()
-    logger.debug(
-        f"getting all Cthulhu articles from the local db article_id={article_id}..."
-    )
-    if article_id is None:
+    logger.debug(f"getting all Cthulhu articles from the local db scene_number={scene_number}...")
+    if scene_number is None:
         db_cthulhu_articles = _get_all_cthulhu_articles()
     else:
-        db_cthulhu_articles = _get_cthulhu_article(article_id=article_id)
+        db_cthulhu_articles = _get_cthulhu_article(scene_number=scene_number)
     # for db_article in db_cthulhu_articles:
     #     for k, v in db_article.items():
     #         db_article[k] = _process_if_json(v)
     elapsed = (datetime.now() - start).total_seconds()
     logger.info(
-        f"fetched and processed all Cthulhu articles from the local db article_id={article_id} "
+        f"fetched and processed all Cthulhu articles from the local db scene_number={scene_number} "
         f"n={len(db_cthulhu_articles)} elapsed={elapsed:.2f}s"
     )
 
@@ -164,30 +168,31 @@ def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
     if len(cthulhu_articles) == 0:
         return 0
 
-    # Convert records to SQLite-friendly format
+    # Convert records to PostgreSQL format
     docs_to_insert: list[dict] = []
     for a in cthulhu_articles:
         if (sk1 := set(a.keys())) != (sk2 := set(mapping.dict_sql_mapping.keys())):
-            raise AssertionError(
-                f"inserted scene key mismatch: {sk1 - sk2} | {sk2 - sk1}"
-            )
+            raise AssertionError(f"inserted scene key mismatch: {sk1 - sk2} | {sk2 - sk1}")
         db_scene = mapping.dict_to_sql(a)
         for k, v in db_scene.items():
             if isinstance(v, dict):
-                db_scene[k] = Jsonb(v, )
+                db_scene[k] = Jsonb(
+                    v,
+                )
         docs_to_insert.append(db_scene)
 
     # Insert records
     sql_keys = list(docs_to_insert[0].keys())
-    sql_value_ids = [f"%({x})s" for x in sql_keys]
-    sql_str = (
-        f"""INSERT INTO news ({", ".join(sql_keys)}) """
-        f"""VALUES ({", ".join(sql_value_ids)})
-        ON CONFLICT (scene_number) DO NOTHING"""
-    )
+    columns = sql.SQL(", ").join(sql.Identifier(k) for k in sql_keys)
+    placeholders = sql.SQL(", ").join(sql.Placeholder(k) for k in sql_keys)
+    
+    query = sql.SQL(
+        "INSERT INTO news ({}) VALUES ({}) ON CONFLICT (scene_number) DO NOTHING"
+    ).format(columns, placeholders)
+    
     with pgpool.connection() as conn:
         with conn.cursor() as c:
-            c.executemany(sql_str, docs_to_insert)  # type: ignore
+            c.executemany(query, docs_to_insert)
             n_inserted = c.rowcount
         conn.commit()
     logger.info(f"inserted Cthulhu articles into the local db n={n_inserted}")
@@ -202,14 +207,14 @@ def latest_scene_timestamp() -> Optional[datetime]:
     return row[0]
 
 
-def get_cthulhu_article_votes(article_id: int) -> Optional[dict]:
+def get_cthulhu_article_votes(scene_number: int) -> Optional[dict]:
     """Get votes for an Chthulhu article
 
     DANGER: Can be exposed to external API, so SQL injection is possible
     """
     with pgpool.connection() as conn:
         with conn.execute(
-            """SELECT reactions->votes FROM news WHERE id = %s""", (article_id,)
+            """SELECT reactions->'votes' FROM news WHERE scene_number = %s""", (scene_number,)
         ) as c:
             rows = c.fetchone()
     if rows is None:
@@ -217,7 +222,7 @@ def get_cthulhu_article_votes(article_id: int) -> Optional[dict]:
     return rows[0]
 
 
-def inc_cthulhu_article_vote(article_id: int, vote: str, user: Optional[str] = None):
+def inc_cthulhu_article_vote(scene_number: int, vote: str, user: Optional[str] = None):
     """Increment votes for an Chthulhu article
 
     DANGER: Can be exposed to external API, so SQL injection is possible
@@ -226,23 +231,25 @@ def inc_cthulhu_article_vote(article_id: int, vote: str, user: Optional[str] = N
         raise NotImplementedError
 
     with pgpool.connection() as conn:
-        conn.execute(
-            """\
+        query = sql.SQL("""\
 UPDATE news
 SET reactions = jsonb_set(
     reactions,
-    %s,
-    (COALESCE(reactions->votes->%s, 0) + 1)::int
+    {path},
+    to_jsonb(COALESCE((reactions->'votes'->>{vote_key})::int, 0) + 1)
 )
-WHERE id = %s
-""",
-            (["votes", sql.Identifier(vote)], sql.Identifier(vote), article_id),
+WHERE scene_number = {scene_number}
+""").format(
+            path=sql.Literal(["votes", vote]),
+            vote_key=sql.Literal(vote),
+            scene_number=sql.Placeholder()
         )
+        conn.execute(query, (scene_number,))
         conn.commit()
 
 
 def submit_cthulhu_article_comment(
-    article_id: int, comment_json: mapping.Comment, user: Optional[str]
+    scene_number: int, comment_json: mapping.Comment, user: Optional[str]
 ):
     """Submit a comment for an Chthulhu article
 
@@ -252,15 +259,18 @@ def submit_cthulhu_article_comment(
         raise NotImplementedError
 
     with pgpool.connection() as conn:
-        conn.execute(
-            """\
+        query = sql.SQL("""\
 UPDATE news
-SET reactions = jsonb_insert(
+SET reactions = jsonb_set(
     reactions,
-    {comments, -1},
-    %s::jsonb
+    {comments_path},
+    (reactions->'comments') || {comment_array}::jsonb
 )
-WHERE id == %s""",
-            (Jsonb(comment_json), article_id),
+WHERE scene_number = {scene_number}
+""").format(
+            comments_path=sql.Literal(['comments']),
+            comment_array=sql.Placeholder(),
+            scene_number=sql.Placeholder()
         )
+        conn.execute(query, (Jsonb([comment_json]), scene_number))
         conn.commit()
