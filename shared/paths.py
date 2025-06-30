@@ -31,13 +31,14 @@ TEMPLATES_DIR = WEB_ROOT / "templates"
 # Log file paths
 LOG_FILE_DIR = PROJECT_ROOT / LOGS_DIR
 WEB_APP_LOG_PATH = LOG_FILE_DIR / "web_app_log.log"
-WEB_ETL_LOG_PATH = LOG_FILE_DIR / "web_etl_log.log" 
+WEB_ETL_LOG_PATH = LOG_FILE_DIR / "web_etl_log.log"
 DB_ETL_LOG_PATH = LOG_FILE_DIR / "db_etl_log.log"
 
 # Database paths
 DB_DATA_DIR = DB_ROOT / DATA_DIR
 DB_LOGS_DIR = DB_ROOT / "logs"
 DB_SECRETS_DIR = DB_ROOT / "secrets"
+
 
 def ensure_directories():
     """Create all required directories if they don't exist."""
@@ -50,9 +51,10 @@ def ensure_directories():
         DB_LOGS_DIR,
         DB_SECRETS_DIR,
     ]
-    
+
     for directory in directories:
         directory.mkdir(exist_ok=True, parents=True)
+
 
 # Initialize directories on import
 ensure_directories()

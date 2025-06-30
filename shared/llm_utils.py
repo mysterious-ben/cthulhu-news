@@ -4,7 +4,7 @@ import litellm
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(1.))
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(1.0))
 def get_llm_json_response(
     gpt_role: str,
     gpt_query: str,

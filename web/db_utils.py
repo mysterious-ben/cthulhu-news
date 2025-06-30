@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from functools import partial
 from envparse import env
-from typing import Optional
+from typing import Optional, Dict
 
 import psycopg
 import psycopg.sql as sql
@@ -75,15 +75,19 @@ def init_local_news_db():
         for k, v in mapping.sql_table_columns.items():
             col_def = sql.SQL("{} {}").format(
                 sql.Identifier(k),
-                sql.SQL(v)  # type: ignore[arg-type]
+                sql.SQL(v),  # type: ignore[arg-type]
             )
             col_definitions.append(col_def)
-        
+
         query = sql.SQL("CREATE TABLE IF NOT EXISTS news ({})").format(
             sql.SQL(", ").join(col_definitions)
         )
         conn.execute(query)
         logger.info("initialized the local news db")
+
+        # Also create and initialize the total_counters table
+        create_total_counters_table()
+        init_total_counters()
 
         # c.execute(f"""UPDATE news SET reactions = '{json.dumps(DEFAULT_NEWS_REACTIONS)}'""")
         # logger.warning("reset the reactions in the local news db")
@@ -185,11 +189,11 @@ def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
     sql_keys = list(docs_to_insert[0].keys())
     columns = sql.SQL(", ").join(sql.Identifier(k) for k in sql_keys)
     placeholders = sql.SQL(", ").join(sql.Placeholder(k) for k in sql_keys)
-    
+
     query = sql.SQL(
         "INSERT INTO news ({}) VALUES ({}) ON CONFLICT (scene_number) DO NOTHING"
     ).format(columns, placeholders)
-    
+
     with pgpool.connection() as conn:
         with conn.cursor() as c:
             c.executemany(query, docs_to_insert)
@@ -242,7 +246,7 @@ WHERE scene_number = {scene_number}
 """).format(
             path=sql.Literal(["votes", vote]),
             vote_key=sql.Literal(vote),
-            scene_number=sql.Placeholder()
+            scene_number=sql.Placeholder(),
         )
         conn.execute(query, (scene_number,))
         conn.commit()
@@ -268,9 +272,137 @@ SET reactions = jsonb_set(
 )
 WHERE scene_number = {scene_number}
 """).format(
-            comments_path=sql.Literal(['comments']),
+            comments_path=sql.Literal(["comments"]),
             comment_array=sql.Placeholder(),
-            scene_number=sql.Placeholder()
+            scene_number=sql.Placeholder(),
         )
         conn.execute(query, (Jsonb([comment_json]), scene_number))
         conn.commit()
+
+
+def create_total_counters_table() -> None:
+    """Create the total_counters table if it doesn't exist."""
+    with pgpool.connection() as conn:
+        col_definitions = []
+        for k, v in mapping.total_counters_table_columns.items():
+            col_def = sql.SQL("{} {}").format(sql.Identifier(k), sql.SQL(v))  # type: ignore[arg-type]
+            col_definitions.append(col_def)
+
+        query = sql.SQL("CREATE TABLE IF NOT EXISTS total_counters ({})").format(
+            sql.SQL(", ").join(col_definitions)
+        )
+        conn.execute(query)
+        logger.info("created total_counters table")
+
+
+def init_total_counters() -> None:
+    """Initialize total_counters table with default values for cultists and detectives."""
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            # Check if table is empty
+            cursor.execute("SELECT COUNT(*) FROM total_counters")
+            rows = cursor.fetchone()
+            assert rows is not None
+            count = rows[0]
+
+            if count == 0:
+                # Insert default values
+                cursor.execute(
+                    """INSERT INTO total_counters (group_name, counter, limit_value)
+                       VALUES (%s, %s, %s), (%s, %s, %s)""",
+                    ("cultists", 0.0, 31.0, "detectives", 0.0, 31.0),
+                )
+                conn.commit()
+                logger.info("initialized total_counters with default values")
+
+
+def get_total_counters() -> Dict[str, mapping.TotalCounters]:
+    """Get current total counters for all groups."""
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT group_name, counter, limit_value FROM total_counters")
+            rows = cursor.fetchall()
+
+            result = {}
+            for row in rows:
+                group_name, counter, limit_value = row
+                result[group_name] = mapping.TotalCounters(
+                    group_name=group_name, counter=counter, limit_value=limit_value
+                )
+            return result
+
+
+def update_total_counters(curr_win_counters: mapping.WinCounters) -> None:
+    """Update total counters by applying the differences from a scene."""
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            query = sql.SQL("""
+                UPDATE total_counters
+                SET counter = {counter}
+                WHERE group_name = {group_name}
+            """).format(
+                counter=sql.Placeholder("counter"),
+                group_name=sql.Placeholder("group_name"),
+            )
+
+            for group_name, group_counter in curr_win_counters.items():
+                cursor.execute(query, {"counter": group_counter, "group_name": group_name})
+            conn.commit()
+            logger.info(f"updated total counters: {curr_win_counters}")
+
+
+# def migrate_counters_to_new_system() -> None:
+#     """Migrate existing counter data from scenes to the new total_counters system."""
+#     logger.info("Starting counter migration...")
+
+#     # Create the total_counters table
+#     create_total_counters_table()
+
+#     # Get all scenes ordered by timestamp
+#     with pgpool.connection() as conn:
+#         with conn.cursor() as cursor:
+#             cursor.execute("""
+#                 SELECT scene_meta
+#                 FROM news
+#                 ORDER BY scene_timestamp ASC
+#             """)
+#             scenes = cursor.fetchall()
+
+#             # Calculate running totals from scene data
+#             total_cultists = 0.0
+#             total_detectives = 0.0
+
+#             for scene_data in scenes:
+#                 scene_meta = scene_data[0]
+#                 if "counters_after" in scene_meta:
+#                     counters_after = scene_meta["counters_after"]
+#                     # Use the absolute values from counters_after as the running total
+#                     if "cultists" in counters_after and "curr" in counters_after["cultists"]:
+#                         total_cultists = counters_after["cultists"]["curr"]
+#                     if "detectives" in counters_after and "curr" in counters_after["detectives"]:
+#                         total_detectives = counters_after["detectives"]["curr"]
+
+#             # Initialize or update the total_counters table
+#             cursor.execute("DELETE FROM total_counters")  # Clear existing data
+#             cursor.execute(
+#                 """INSERT INTO total_counters (group_name, counter, limit_value)
+#                    VALUES (%s, %s, %s), (%s, %s, %s)""",
+#                 ("cultists", total_cultists, 31.0, "detectives", total_detectives, 31.0),
+#             )
+#             conn.commit()
+
+#             logger.info(
+#                 f"Migration complete. Final totals - cultists: {total_cultists}, detectives: {total_detectives}"
+#             )
+
+
+def calculate_new_counters(
+    counters_before: mapping.WinCounters, counters_diff: mapping.WinCounters
+) -> mapping.WinCounters:
+    """Calculate the difference between before and after counters."""
+    assert counters_before.keys() == {"cultists", "detectives"}, "Invalid keys in counters_before"
+    assert counters_diff.keys() == {"cultists", "detectives"}, "Invalid keys in counters_diff"
+
+    new_counters = {k: counters_before[k] + counters_diff[k] for k in counters_before.keys()}
+
+    return new_counters

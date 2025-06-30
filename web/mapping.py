@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import TypedDict
+from typing import TypedDict, Any
 
 
 def _is_valid_sql_column(s):
@@ -25,9 +25,18 @@ class NewsArticle(TypedDict):
     gpt_economic_impact: str
 
 
-class WinCounters(TypedDict):
-    cultists: dict[str, float]
-    detectives: dict[str, float]
+# class WinCounters(TypedDict):
+#     cultists: float
+#     detectives: float
+
+
+WinCounters = dict[str, float]
+
+
+class TotalCounters(TypedDict):
+    group_name: str
+    counter: float
+    limit_value: float
 
 
 class Votes(TypedDict):
@@ -77,8 +86,7 @@ class Scene(TypedDict):
     scene_trustworthiness: float
     scene_older_versions: list[dict]
     story_summary: str
-    counters_before: WinCounters
-    counters_after: WinCounters
+    counters_change: WinCounters
     scene_ends_story: bool
     story_winner: str
     image_meta: dict
@@ -105,8 +113,18 @@ sql_table_columns: dict[str, str] = {
     "reactions": "JSONB NOT NULL",
 }
 
+total_counters_table_columns: dict[str, str] = {
+    "group_name": "TEXT PRIMARY KEY",
+    "counter": "FLOAT NOT NULL",
+    "limit_value": "FLOAT NOT NULL",
+}
+
 
 for k, v in sql_table_columns.items():
+    assert _is_valid_sql_column(k), f"Invalid SQL column name: {k}"
+    assert _is_valid_sql_column_type(v), f"Invalid SQL column type: {v}"
+
+for k, v in total_counters_table_columns.items():
     assert _is_valid_sql_column(k), f"Invalid SQL column name: {k}"
     assert _is_valid_sql_column_type(v), f"Invalid SQL column type: {v}"
 
@@ -144,8 +162,7 @@ dict_sql_mapping = {
     "scene_outcome_description": ("scene_meta", "scene_outcome_description"),
     "scene_first_sentence": ("scene_meta", "scene_first_sentence"),
     "scene_trustworthiness": ("scene_meta", "scene_trustworthiness"),
-    "counters_before": ("scene_meta", "counters_before"),
-    "counters_after": ("scene_meta", "counters_after"),
+    "counters_change": ("scene_meta", "counters_change"),
     "story_winner": ("scene_meta", "story_winner"),
     "image_meta": "image_meta",
     "reactions": "reactions",
@@ -156,9 +173,7 @@ dict_sql_mapping = {
 sql_dict_mapping = {v: k for k, v in dict_sql_mapping.items()}
 
 if (ks1 := set(dict_sql_mapping.keys())) != (ks2 := set(Scene.__annotations__.keys())):
-    raise AssertionError(
-        f"mapping keys error: key mismatch {ks1 - ks2} | {ks2 - ks1}"
-    )
+    raise AssertionError(f"mapping keys error: key mismatch {ks1 - ks2} | {ks2 - ks1}")
 
 if not (
     vs1 := set([v if isinstance(v, str) else v[0] for v in dict_sql_mapping.values()])
@@ -179,8 +194,8 @@ def sql_to_dict(db_scene: dict) -> Scene:
     return scene
 
 
-def dict_to_sql(scene: Scene) -> dict:
-    db_scene = {}
+def dict_to_sql(scene: Scene) -> dict[str, Any]:
+    db_scene: dict[str, Any] = {}
     for key_dict, key_sql in dict_sql_mapping.items():
         if isinstance(key_sql, str):
             db_scene[key_sql] = scene[key_dict]

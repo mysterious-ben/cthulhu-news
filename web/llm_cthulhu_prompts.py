@@ -410,8 +410,8 @@ scene_outcomes = {
     "success": {
         "description": "The protagonists succeed or make substantial progress towards their goal in the scene",
         "counter_change": {
-            "detectives": {"detectives": 1},
-            "cultists": {"cultists": 1},
+            "detectives": {"detectives": 1.0},
+            "cultists": {"cultists": 1.0},
         },
     },
     "mixed": {
@@ -436,9 +436,7 @@ scene_outcomes = {
 
 def _format_group_members(group_members, no_real_names: bool = True) -> str:
     if no_real_names:
-        return "\n".join(
-            "- " + x["alias"] + ". " + x["description"] for x in group_members
-        )
+        return "\n".join("- " + x["alias"] + ". " + x["description"] for x in group_members)
     else:
         return "\n".join(
             "- " + x["alias"] + ". Real name: " + x["name"] + ". " + x["description"]
@@ -446,29 +444,10 @@ def _format_group_members(group_members, no_real_names: bool = True) -> str:
         )
 
 
-def _format_group_protocol(group_protocol_steps, no_descriptions: bool = True) -> str:
-    if no_descriptions:
-        return "\n".join(
-            str(i) + ". " + x["name"] for i, x in enumerate(group_protocol_steps)
-        )
-    else:
-        return "\n".join(
-            str(i) + ". " + x["name"] + ". " + x["description"]
-            for i, x in enumerate(group_protocol_steps)
-        )
-
-
-# def format_scene_types(scene_types, no_descriptions: bool = True) -> str:
-#     if no_descriptions:
-#         return "\n".join("- " + x["name"] for x in scene_types)
-#     else:
-#         return "\n".join("- " + x["name"] + ". " + x["description"] for x in scene_types)
-
-
 def check_sign_conditions(conditions: list[tuple], win_counters: WinCounters) -> bool:
     result = True
     for counter_key, sign, threshold in conditions:
-        value = win_counters[counter_key]["curr"]
+        value = win_counters[counter_key]
         if sign == ">":
             result = result and (value > threshold)
         elif sign == "<":
@@ -516,13 +495,9 @@ _sample_scenes: list[Scene] = [
         "story_summary": "",
         "scene_ends_story": False,
         "story_winner": "NA",
-        "counters_before": {
-            "cultists": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-            "detectives": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-        },
-        "counters_after": {
-            "cultists": {"curr": 1.0, "max": 1.0, "limit": 31.0},
-            "detectives": {"curr": 0.0, "max": 0.0, "limit": 31.0},
+        "counters_change": {
+            "cultists": 1.0,
+            "detectives": 0.0,
         },
         "image_meta": {},
         "reactions": {"votes": {"truth": 0, "lie": 0, "voted_by": []}, "comments": []},
@@ -566,13 +541,9 @@ _sample_scenes: list[Scene] = [
         "story_summary": "",
         "scene_ends_story": False,
         "story_winner": "NA",
-        "counters_before": {
-            "cultists": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-            "detectives": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-        },
-        "counters_after": {
-            "cultists": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-            "detectives": {"curr": 0.8, "max": -0.2, "limit": 31.0},
+        "counters_change": {
+            "cultists": 0.0,
+            "detectives": -0.2,
         },
         "image_meta": {},
         "reactions": {"votes": {"truth": 0, "lie": 0, "voted_by": []}, "comments": []},
@@ -591,9 +562,7 @@ def _format_scene(
     scene: Scene,
 ) -> str:
     s = scene
-    counters_str = " ".join(
-        [f"{k}={v['curr']}/{v['limit']}" for k, v in s["counters_after"].items()]  # type: ignore
-    )
+    counters_str = " ".join([f"{k}_diff={v}" for k, v in s["counters_change"].items()])
     s_str = f"""\
 Scene #{s["scene_number"]}. {s["scene_timestamp"].strftime(r"%Y-%m-%d")}.
 
@@ -618,7 +587,7 @@ def _format_scene_parameters(
     )
     s_str = f"""\
 Scene #{s["scene_number"]} parameters:
-- Task: Tell a story in first person as {s["scene_narrator"]}, who is writing a blog post about events allegendly related to {s["scene_protagonists"]} ("Scene {s['scene_number']}"). The narrator is careful to never reveal their own identity.
+- Task: Tell a story in first person as {s["scene_narrator"]}, who is writing a blog post about events allegendly related to {s["scene_protagonists"]} ("Scene {s["scene_number"]}"). The narrator is careful to never reveal their own identity.
 - Connections: This story must be build upon the previous events when appropriate, and linked to the today's news article by revealing the hidden truth behind it.
 - Focus: Give colorful but minimalistic exposition, leaving some details out to create the sense of mystery. Create a short engaging scene, developing the characters and moving the plot forward. Focus on the characters, personal drama, action, mystery, surrealism, tension, and horror.
 - Narrator's writing style: {s["scene_writing_style"]}.
@@ -652,18 +621,18 @@ This story connects fictional events to real-world news.
 This story has two main character groups: the cultists and the detectives, who wage a cover war against each other.
 
 I. The cultists.
-{group_name['cultists']}
-{group_intro['cultists']}
+{group_name["cultists"]}
+{group_intro["cultists"]}
 
 The prominent cultists:
-{_format_group_members(group_characters['cultists'])}
+{_format_group_members(group_characters["cultists"])}
 
 II. The detectives.
-{group_name['detectives']}
-{group_intro['detectives']}
+{group_name["detectives"]}
+{group_intro["detectives"]}
 
 The prominent detectives:
-{_format_group_members(group_characters['detectives'])}
+{_format_group_members(group_characters["detectives"])}
 
 III. The witnesses.
 The story is narrated through the media posts of **witnesses**, who have connections in both groups. Their information is based on leaked reports, emails, videos and rumors.
@@ -705,9 +674,7 @@ def create_new_scene_prompt(
 ) -> str:
     assert include_sample_scenes_threshold > 0
     assert last_scenes_threshold > 0
-    story_so_far_str = format_scenes(
-        scenes_so_far[-last_scenes_threshold:] + [new_scene]
-    )
+    story_so_far_str = format_scenes(scenes_so_far[-last_scenes_threshold:] + [new_scene])
     if len(scenes_so_far) <= include_sample_scenes_threshold:
         sample_scenes = format_scenes(_sample_scenes)
     else:

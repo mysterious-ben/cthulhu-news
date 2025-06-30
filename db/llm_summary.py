@@ -13,6 +13,7 @@ TEXT_MODEL_MAX_TOKENS = env.int("TEXT_MODEL_MAX_TOKENS")
 
 litellm.openai_key = OPENAI_API_KEY
 
+
 def _parse_gpt_json_response(expected_fields: dict, response_json: dict) -> dict:
     formatted_gpt_json = {}
     for field, conditions in expected_fields.items():

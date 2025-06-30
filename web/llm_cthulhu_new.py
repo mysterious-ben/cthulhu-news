@@ -1,5 +1,4 @@
 import base64
-import copy
 import random
 import time
 from datetime import datetime
@@ -11,6 +10,7 @@ from dotenv import find_dotenv, load_dotenv
 
 import web.llm_cthulhu_prompts as prompts
 from web.mapping import WinCounters, Scene, NewsArticle
+import web.db_utils as db_utils
 from shared.llm_utils import get_llm_json_response
 from shared.paths import CTHULHU_IMAGE_DIR
 
@@ -27,9 +27,7 @@ litellm.openai_key = OPENAI_API_KEY
 
 
 def _str_to_filename(string: str) -> str:
-    return "".join(
-        x for x in string.lower().replace(" ", "_") if x.isalnum() or x == "_"
-    )
+    return "".join(x for x in string.lower().replace(" ", "_") if x.isalnum() or x == "_")
 
 
 def _parse_llm_json_response(
@@ -50,9 +48,7 @@ def _parse_llm_json_response(
                 if conditions["split"]:
                     value = [v.strip() for v in value.split(",")]  # type: ignore
                     if conditions["votes"]:
-                        value_is_correct = set(value).issubset(
-                            set(conditions["votes"])
-                        )  # type: ignore
+                        value_is_correct = set(value).issubset(set(conditions["votes"]))  # type: ignore
                 else:
                     if conditions["votes"]:
                         value_is_correct = value in set(conditions["votes"])  # type: ignore
@@ -74,13 +70,14 @@ def _change_protagonists(protagonists: str) -> str:
         raise ValueError(f"unknown protagonists={protagonists}")
 
 
-def _update_counters(
-    protagonists: str, outcome: str, counters: WinCounters
-) -> None:
-    updates = prompts.scene_outcomes[outcome]["counter_change"][protagonists]
-    for k, v in updates.items():
-        counters[k]["curr"] += v
-        counters[k]["max"] = max(counters[k]["curr"], counters[k]["max"])
+def _counters_change(protagonists: str, outcome: str) -> WinCounters:
+    counters_change = {"cultists": 0.0, "detectives": 0.0}
+    counter_change_data = prompts.scene_outcomes[outcome]["counter_change"][protagonists]
+
+    for group, counter in counter_change_data.items():
+        counters_change[group] += counter
+
+    return counters_change
 
 
 def _create_new_scene_parameters(
@@ -104,9 +101,9 @@ def _create_new_scene_parameters(
     ]
     curr_protocol = random.choice(curr_protocol_steps)
     outcome = random.choice([k for k in prompts.scene_outcomes.keys()])
-    counters_before = copy.deepcopy(win_counters)
-    counters_after = copy.deepcopy(win_counters)
-    _update_counters(protagonists, outcome, counters_after)
+
+    # Calculate counter difference for this scene
+    counter_change = _counters_change(protagonists, outcome)
 
     if curr_protocol["wins"] and (outcome == "success"):
         story_winner = protagonists
@@ -142,8 +139,7 @@ def _create_new_scene_parameters(
         "scene_trustworthiness": 1,
         "scene_older_versions": [],
         "story_summary": "",
-        "counters_before": counters_before,
-        "counters_after": counters_after,
+        "counters_change": counter_change,
         "scene_ends_story": scene_ends_story,
         "story_winner": story_winner,
         "image_meta": {},
@@ -173,9 +169,13 @@ def generate_cthulhu_news(
 
     scene_number = len(scenes_so_far) + 1
 
-    win_counters: WinCounters = {
-        "cultists": {"curr": 0.0, "max": 0.0, "limit": 31.0},
-        "detectives": {"curr": 0.0, "max": 0.0, "limit": 31.0},
+    # Get current total counters from database
+    total_counters_dict = db_utils.get_total_counters()
+
+    # Convert to WinCounters format for compatibility with existing logic
+    curr_win_counters: WinCounters = {
+        "cultists": total_counters_dict["cultists"]["counter"],
+        "detectives": total_counters_dict["detectives"]["counter"],
     }
 
     for news_article, timestamp in zip(news_articles, timestamps):
@@ -186,13 +186,13 @@ def generate_cthulhu_news(
             return scenes_so_far[n_initial_scenes:]
         else:
             protagonists = _change_protagonists(scenes_so_far[-1]["scene_protagonists"])
-            win_counters.update(scenes_so_far[-1]["counters_after"])
+            # win_counters are now read from database, not from previous scene
 
         scene = _create_new_scene_parameters(
             news_article=news_article,
             scene_number=scene_number,
             protagonists=protagonists,
-            win_counters=win_counters,
+            win_counters=curr_win_counters,
             scene_timestamp=timestamp,
         )
 
@@ -218,9 +218,7 @@ def generate_cthulhu_news(
             f"added gpt generated fields title='{scene['scene_title']}' & scene_text='{scene['scene_text'][:20]}...'"
         )
 
-        summary_prompt = prompts.create_story_summary_prompt(
-            scenes=scenes_so_far + [scene]
-        )
+        summary_prompt = prompts.create_story_summary_prompt(scenes=scenes_so_far + [scene])
 
         response_json = get_llm_json_response(
             gpt_role=prompts.summary_role_prompt,
@@ -241,6 +239,9 @@ def generate_cthulhu_news(
         for k, v in scene.items():
             assert v is not None, f"scene parameter '{k}' is None"
             assert v != "", f"scene parameter '{k}' = ''"
+
+        curr_win_counters = db_utils.calculate_new_counters(curr_win_counters, scene["counters_change"])
+        db_utils.update_total_counters(curr_win_counters)
 
         scenes_so_far.append(scene)
 
@@ -264,7 +265,9 @@ def add_cthulhu_images(scenes: list[Scene]) -> None:
     """Generate images for the Cthulhu scenes."""
 
     for scene in scenes:
-        dalle_prompt = "Create a dark retro surrealism image that depicts this alarming news article:\n\n"
+        dalle_prompt = (
+            "Create a dark retro surrealism image that depicts this alarming news article:\n\n"
+        )
         dalle_prompt += scene["news_summary"] + "\n\n" + scene["scene_text"]
         title: str = scene["scene_title"]
         image_name = _str_to_filename(title)
