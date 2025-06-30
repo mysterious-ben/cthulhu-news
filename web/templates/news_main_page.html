@@ -29,7 +29,7 @@
                     <h2 class="main-title">{{ article['news_title'] }}</h2>
                     <p class="news-summary drop-cap">{{ article['news_summary'] }}</p>
                     <div class="news-source">
-                        (reported by <a href="{{ article['news_url'] }}">{{ article['news_source'] }}</a> on {{
+                        (reported by <a href="{{ article['news_url'] }}" target="_blank">{{ article['news_source'] }}</a> on {{
                         article['published_at'][:10] }})
                     </div>
                 </div>
