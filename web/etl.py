@@ -4,22 +4,22 @@
 
 import itertools
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Iterable
+from time import sleep
+from typing import Iterable, Optional
 
 import pymongo
-from prefect import flow, task
-from prefect.schedules import Cron
 from dateutil import parser  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
 from logutil import init_loguru
-from time import sleep
 
-from web.llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
-import web.mapping as mapping
 import web.db_utils as dbu
+import web.mapping as mapping
+from prefect import flow, task
+from prefect.schedules import Cron
 from shared.paths import CTHULHU_IMAGE_DIR, WEB_ETL_LOG_PATH
+from web.llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
 
 load_dotenv(find_dotenv())
 
@@ -42,6 +42,7 @@ logger.debug(f"CTHULHU_IMAGE_DIR={CTHULHU_IMAGE_DIR.absolute()}")
 
 
 dbu.init_local_news_db()
+dbu.update_total_counter_limits()
 
 
 def dt_to_str(dt: Optional[datetime]) -> str:

@@ -2,20 +2,20 @@ import atexit
 import json
 from datetime import datetime
 from functools import partial
-from envparse import env
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import psycopg
 import psycopg.sql as sql
+from envparse import env
 from loguru import logger
-from psycopg_pool import ConnectionPool
 from pgvector.psycopg import register_vector
 
 # from psycopg_pool import AsyncConnectionPool
 from psycopg.types.json import Jsonb, set_json_dumps, set_json_loads
+from psycopg_pool import ConnectionPool
 
+import web.llm_cthulhu_prompts as prompts
 import web.mapping as mapping
-
 
 POSTGRES_HOST = env.str("POSTGRES_HOST")
 POSTGRES_PORT = env.int("POSTGRES_PORT")
@@ -66,8 +66,7 @@ def pg_connect() -> psycopg.Connection:
     return psycopg.connect(POSTGRES_CONN_STR, autocommit=True)
 
 
-def init_local_news_db():
-    """Internal function to initialize the local news database."""
+def _create_news_table() -> None:
     with pgpool.connection() as conn:
         # conn.execute("""DROP TABLE news""")
 
@@ -85,12 +84,58 @@ def init_local_news_db():
         conn.execute(query)
         logger.info("initialized the local news db")
 
-        # Also create and initialize the total_counters table
-        create_total_counters_table()
-        init_total_counters()
 
-        # c.execute(f"""UPDATE news SET reactions = '{json.dumps(DEFAULT_NEWS_REACTIONS)}'""")
-        # logger.warning("reset the reactions in the local news db")
+def _create_total_counters_table() -> None:
+    """Create the total_counters table if it doesn't exist."""
+    with pgpool.connection() as conn:
+        col_definitions = []
+        for k, v in mapping.total_counters_table_columns.items():
+            col_def = sql.SQL("{} {}").format(sql.Identifier(k), sql.SQL(v))  # type: ignore[arg-type]
+            col_definitions.append(col_def)
+
+        query = sql.SQL("CREATE TABLE IF NOT EXISTS total_counters ({})").format(
+            sql.SQL(", ").join(col_definitions)
+        )
+        conn.execute(query)
+        logger.info("created total_counters table")
+
+
+def _init_total_counters(group_name: str, init_value: float, limit_value: float) -> None:
+    """Initialize total_counters table with default values for cultists and detectives."""
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO total_counters (group_name, counter, limit_value)
+                    VALUES (%s, %s, %s),
+                    ON CONFLICT (group_name) DO NOTHING""",
+                (group_name, init_value, limit_value),
+            )
+            count = cursor.rowcount
+            conn.commit()
+            if count > 0:
+                logger.info(f"initialized total_counters {group_name} with default values")
+
+
+def init_local_news_db():
+    """Internal function to initialize the local news database."""
+    _create_news_table()
+    _create_total_counters_table()
+    for group_name, values in prompts.group_init_counters.items():
+        _init_total_counters(group_name, values["init_value"], values["limit_value"])
+
+
+def update_total_counter_limits() -> None:
+    """Update the limit value for a specific group in the total_counters table."""
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            for group_name, values in prompts.group_init_counters.items():
+                new_limit = values["limit_value"]
+                cursor.execute(
+                    """UPDATE total_counters SET limit_value = %s WHERE group_name = %s""",
+                    (new_limit, group_name),
+                )
+                conn.commit()
+                logger.info(f"updated total limit for {group_name} to {new_limit}")
 
 
 def _get_cthulhu_article(scene_number: int) -> list[dict]:
@@ -280,42 +325,6 @@ WHERE scene_number = {scene_number}
         conn.commit()
 
 
-def create_total_counters_table() -> None:
-    """Create the total_counters table if it doesn't exist."""
-    with pgpool.connection() as conn:
-        col_definitions = []
-        for k, v in mapping.total_counters_table_columns.items():
-            col_def = sql.SQL("{} {}").format(sql.Identifier(k), sql.SQL(v))  # type: ignore[arg-type]
-            col_definitions.append(col_def)
-
-        query = sql.SQL("CREATE TABLE IF NOT EXISTS total_counters ({})").format(
-            sql.SQL(", ").join(col_definitions)
-        )
-        conn.execute(query)
-        logger.info("created total_counters table")
-
-
-def init_total_counters() -> None:
-    """Initialize total_counters table with default values for cultists and detectives."""
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            # Check if table is empty
-            cursor.execute("SELECT COUNT(*) FROM total_counters")
-            rows = cursor.fetchone()
-            assert rows is not None
-            count = rows[0]
-
-            if count == 0:
-                # Insert default values
-                cursor.execute(
-                    """INSERT INTO total_counters (group_name, counter, limit_value)
-                       VALUES (%s, %s, %s), (%s, %s, %s)""",
-                    ("cultists", 0.0, 31.0, "detectives", 0.0, 31.0),
-                )
-                conn.commit()
-                logger.info("initialized total_counters with default values")
-
-
 def get_total_counters() -> Dict[str, mapping.TotalCounters]:
     """Get current total counters for all groups."""
     with pgpool.connection() as conn:
@@ -351,57 +360,11 @@ def update_total_counters(curr_win_counters: mapping.WinCounters) -> None:
             logger.info(f"updated total counters: {curr_win_counters}")
 
 
-# def migrate_counters_to_new_system() -> None:
-#     """Migrate existing counter data from scenes to the new total_counters system."""
-#     logger.info("Starting counter migration...")
-
-#     # Create the total_counters table
-#     create_total_counters_table()
-
-#     # Get all scenes ordered by timestamp
-#     with pgpool.connection() as conn:
-#         with conn.cursor() as cursor:
-#             cursor.execute("""
-#                 SELECT scene_meta
-#                 FROM news
-#                 ORDER BY scene_timestamp ASC
-#             """)
-#             scenes = cursor.fetchall()
-
-#             # Calculate running totals from scene data
-#             total_cultists = 0.0
-#             total_detectives = 0.0
-
-#             for scene_data in scenes:
-#                 scene_meta = scene_data[0]
-#                 if "counters_after" in scene_meta:
-#                     counters_after = scene_meta["counters_after"]
-#                     # Use the absolute values from counters_after as the running total
-#                     if "cultists" in counters_after and "curr" in counters_after["cultists"]:
-#                         total_cultists = counters_after["cultists"]["curr"]
-#                     if "detectives" in counters_after and "curr" in counters_after["detectives"]:
-#                         total_detectives = counters_after["detectives"]["curr"]
-
-#             # Initialize or update the total_counters table
-#             cursor.execute("DELETE FROM total_counters")  # Clear existing data
-#             cursor.execute(
-#                 """INSERT INTO total_counters (group_name, counter, limit_value)
-#                    VALUES (%s, %s, %s), (%s, %s, %s)""",
-#                 ("cultists", total_cultists, 31.0, "detectives", total_detectives, 31.0),
-#             )
-#             conn.commit()
-
-#             logger.info(
-#                 f"Migration complete. Final totals - cultists: {total_cultists}, detectives: {total_detectives}"
-#             )
-
-
 def calculate_new_counters(
     counters_before: mapping.WinCounters, counters_diff: mapping.WinCounters
 ) -> mapping.WinCounters:
     """Calculate the difference between before and after counters."""
-    assert counters_before.keys() == {"cultists", "detectives"}, "Invalid keys in counters_before"
-    assert counters_diff.keys() == {"cultists", "detectives"}, "Invalid keys in counters_diff"
+    assert counters_before.keys() == counters_diff.keys(), "Inconsistent keys"
 
     new_counters = {k: counters_before[k] + counters_diff[k] for k in counters_before.keys()}
 

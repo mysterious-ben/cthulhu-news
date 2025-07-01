@@ -4,15 +4,15 @@ import time
 from datetime import datetime
 
 import litellm
+from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
-from dotenv import find_dotenv, load_dotenv
 
-import web.llm_cthulhu_prompts as prompts
-from web.mapping import WinCounters, Scene, NewsArticle
 import web.db_utils as db_utils
+import web.llm_cthulhu_prompts as prompts
 from shared.llm_utils import get_llm_json_response
 from shared.paths import CTHULHU_IMAGE_DIR
+from web.mapping import NewsArticle, Scene, WinCounters
 
 load_dotenv(find_dotenv())
 
@@ -240,7 +240,9 @@ def generate_cthulhu_news(
             assert v is not None, f"scene parameter '{k}' is None"
             assert v != "", f"scene parameter '{k}' = ''"
 
-        curr_win_counters = db_utils.calculate_new_counters(curr_win_counters, scene["counters_change"])
+        curr_win_counters = db_utils.calculate_new_counters(
+            curr_win_counters, scene["counters_change"]
+        )
         db_utils.update_total_counters(curr_win_counters)
 
         scenes_so_far.append(scene)

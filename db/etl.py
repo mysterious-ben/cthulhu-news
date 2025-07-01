@@ -12,8 +12,6 @@ import httpx
 import newspaper
 import nltk
 import pymongo
-from prefect import flow, task
-from prefect.schedules import Interval
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
@@ -21,6 +19,8 @@ from logutil import init_loguru
 from pymongo.errors import BulkWriteError
 
 from db.llm_summary import add_gpt_info
+from prefect import flow, task
+from prefect.schedules import Interval
 from shared.paths import DB_ETL_LOG_PATH
 
 load_dotenv(find_dotenv())

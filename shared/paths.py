@@ -3,8 +3,9 @@ Centralized path configuration for Cthulhu News project.
 """
 
 from pathlib import Path
-from envparse import env
+
 from dotenv import find_dotenv, load_dotenv
+from envparse import env
 
 load_dotenv(find_dotenv())
 

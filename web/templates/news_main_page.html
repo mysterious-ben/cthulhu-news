@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
     <script src="/static/js/news_main_page.js"></script>
     <script src="/static/js/news_article.js"></script>
+    <script src="/static/js/counter_effects.js"></script>
 </head>
 
 <body>
@@ -20,6 +21,43 @@
             <h1 class="website-name">Cthulhu News</h1>
             <div class="newspaper-subtitle">Uncovering the Truth Behind the Veil</div>
             <div class="masthead-border"></div>
+            
+            <!-- Counter Display -->
+            <div class="counter-display">
+                <div class="counter-section cultist-counter">
+                    <div class="counter-title">The Final Tide</div>
+                    <div class="circular-gauge" 
+                         data-value="{{ counters['cultists']['counter'] }}" 
+                         data-limit="{{ counters['cultists']['limit_value'] }}"
+                         data-faction="cultist">
+                        <svg class="gauge-svg" viewBox="0 0 120 120">
+                            <circle class="gauge-background" cx="60" cy="60" r="50"/>
+                            <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="50"/>
+                        </svg>
+                        <div class="gauge-tooltip">
+                            {{ "%.1f"|format(counters['cultists']['counter']) }} / {{ counters['cultists']['limit_value']|int }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="counter-divider">❦</div>
+                
+                <div class="counter-section detective-counter">
+                    <div class="counter-title">The Ravens</div>
+                    <div class="circular-gauge" 
+                         data-value="{{ counters['detectives']['counter'] }}" 
+                         data-limit="{{ counters['detectives']['limit_value'] }}"
+                         data-faction="detective">
+                        <svg class="gauge-svg" viewBox="0 0 120 120">
+                            <circle class="gauge-background" cx="60" cy="60" r="50"/>
+                            <circle class="gauge-fill detective-fill" cx="60" cy="60" r="50"/>
+                        </svg>
+                        <div class="gauge-tooltip">
+                            {{ "%.1f"|format(counters['detectives']['counter']) }} / {{ counters['detectives']['limit_value']|int }}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </header>
         
         <main class="news-area">

@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import TypedDict, Any
+from typing import Any, TypedDict
 
 
 def _is_valid_sql_column(s):

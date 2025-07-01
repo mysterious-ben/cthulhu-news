@@ -2,23 +2,23 @@
 ### CHTHULHU-NEWS WEB INTERFACE ###
 ###################################
 
-import cachetools
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import cachetools
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from PIL import Image
 from loguru import logger
 from logutil import init_loguru
+from PIL import Image
 
-import web.mapping as mapping
 import web.db_utils as dbu
+import web.mapping as mapping
 from shared.paths import CTHULHU_IMAGE_DIR, HTML_STATIC_DIR, TEMPLATES_DIR, WEB_APP_LOG_PATH
 
 load_dotenv(find_dotenv())
@@ -43,6 +43,9 @@ app.mount(
 
 init_loguru(file_path=str(WEB_APP_LOG_PATH))
 logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
+
+
+dbu.update_total_counter_limits()
 
 
 # @cachetools.cached(cachetools.TTLCache(maxsize=10, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
@@ -121,8 +124,13 @@ async def news_main_page(request: Request):
 
     cthulhu_articles = _get_cthulhu_articles_cached()
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
+
+    # Get current total counters for display
+    total_counters = dbu.get_total_counters()
+
     response = templates.TemplateResponse(
-        "news_main_page.html", {"request": request, "news_articles": html_articles}
+        "news_main_page.html",
+        {"request": request, "news_articles": html_articles, "counters": total_counters},
     )
 
     elapsed = (datetime.now() - start).total_seconds()

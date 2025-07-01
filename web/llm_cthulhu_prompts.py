@@ -1,6 +1,40 @@
 from datetime import datetime, timezone
+from typing import TypedDict
 
 from web.mapping import Scene, WinCounters
+
+## Counters
+
+
+class InitCounters(TypedDict):
+    init_value: float
+    limit_value: float
+
+
+group_init_counters: dict[str, InitCounters] = {
+    "cultists": {"init_value": 1.0, "limit_value": 30.0},
+    "detectives": {"init_value": 1.0, "limit_value": 30.0},
+}
+
+
+world_event_counters = {
+    "cultists": {
+        5.0: "Something bad happens 1",
+        10.0: "Something bad happens 2",
+        15.0: "Something bad happens 3",
+        20.0: "Something bad happens 4",
+        25.0: "Something bad happens 5",
+        30.0: "Something bad happens 6",
+    },
+    "detectives": {
+        5.0: "Something good happens 1",
+        10.0: "Something good happens 2",
+        15.0: "Something good happens 3",
+        20.0: "Something good happens 4",
+        25.0: "Something good happens 5",
+        30.0: "Something good happens 6",
+    },
+}
 
 
 ## GROUPS: CULTISTS AND DETECTIVES
@@ -191,7 +225,7 @@ group_protocol_steps = {
                 "Recruit new initiates to replace those lost in earlier rituals.",
                 "Prepare contingency plans in case authorities interrupt the event.",
             ],
-            "conditions": [("cultists", ">", 30)],
+            "conditions": [("cultists", ">=", 30)],
             "wins": True,
         },
     ],
@@ -322,7 +356,7 @@ group_protocol_steps = {
                 "Destroy all recovered relics to render the ritual incomplete.",
                 "Neutralize key cult leaders before they can initiate the ritual.",
             ],
-            "conditions": [("detectives", ">", 30)],
+            "conditions": [("detectives", ">=", 30)],
             "wins": True,
         },
     ],
@@ -450,6 +484,10 @@ def check_sign_conditions(conditions: list[tuple], win_counters: WinCounters) ->
         value = win_counters[counter_key]
         if sign == ">":
             result = result and (value > threshold)
+        elif sign == ">=":
+            result = result and (value >= threshold)
+        elif sign == "<=":
+            result = result and (value <= threshold)
         elif sign == "<":
             result = result and (value < threshold)
         else:
