@@ -25,17 +25,21 @@
             <!-- Counter Display -->
             <div class="counter-display">
                 <div class="counter-section cultist-counter">
-                    <div class="counter-title">The Final Tide</div>
-                    <div class="circular-gauge" 
-                         data-value="{{ counters['cultists']['counter'] }}" 
-                         data-limit="{{ counters['cultists']['limit_value'] }}"
-                         data-faction="cultist">
-                        <svg class="gauge-svg" viewBox="0 0 120 120">
-                            <circle class="gauge-background" cx="60" cy="60" r="50"/>
-                            <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="50"/>
-                        </svg>
-                        <div class="gauge-tooltip">
-                            {{ "%.1f"|format(counters['cultists']['counter']) }} / {{ counters['cultists']['limit_value']|int }}
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div class="counter-title">The Final Tide</div>
+                        <div class="circular-gauge" 
+                             data-value="{{ counters['cultists']['counter'] }}" 
+                             data-limit="{{ counters['cultists']['limit_value'] }}"
+                             data-faction="cultist">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-background" cx="60" cy="60" r="46"/>
+                                <circle class="gauge-border cultist-border" cx="60" cy="60" r="50"/>
+                                <circle class="gauge-border cultist-border" cx="60" cy="60" r="42"/>
+                                <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="46"/>
+                            </svg>
+                            <div class="gauge-tooltip">
+                                {{ "%.1f"|format(counters['cultists']['counter']) }} / {{ counters['cultists']['limit_value']|int }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -43,17 +47,21 @@
                 <div class="counter-divider">❦</div>
                 
                 <div class="counter-section detective-counter">
-                    <div class="counter-title">The Ravens</div>
-                    <div class="circular-gauge" 
-                         data-value="{{ counters['detectives']['counter'] }}" 
-                         data-limit="{{ counters['detectives']['limit_value'] }}"
-                         data-faction="detective">
-                        <svg class="gauge-svg" viewBox="0 0 120 120">
-                            <circle class="gauge-background" cx="60" cy="60" r="50"/>
-                            <circle class="gauge-fill detective-fill" cx="60" cy="60" r="50"/>
-                        </svg>
-                        <div class="gauge-tooltip">
-                            {{ "%.1f"|format(counters['detectives']['counter']) }} / {{ counters['detectives']['limit_value']|int }}
+                    <div style="display: flex; align-items: center; gap: 20px; flex-direction: row-reverse;">
+                        <div class="counter-title">The Ravens</div>
+                        <div class="circular-gauge" 
+                             data-value="{{ counters['detectives']['counter'] }}" 
+                             data-limit="{{ counters['detectives']['limit_value'] }}"
+                             data-faction="detective">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-background" cx="60" cy="60" r="46"/>
+                                <circle class="gauge-border detective-border" cx="60" cy="60" r="50"/>
+                                <circle class="gauge-border detective-border" cx="60" cy="60" r="42"/>
+                                <circle class="gauge-fill detective-fill" cx="60" cy="60" r="46"/>
+                            </svg>
+                            <div class="gauge-tooltip">
+                                {{ "%.1f"|format(counters['detectives']['counter']) }} / {{ counters['detectives']['limit_value']|int }}
+                            </div>
                         </div>
                     </div>
                 </div>

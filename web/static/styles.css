@@ -882,9 +882,10 @@ input[type=text]::placeholder {
     justify-content: center;
     align-items: center;
     gap: 3rem;
-    margin: 2rem 0;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, 
+    margin-top: 2rem;
+    margin-bottom: 0rem;
+    /* padding: 1.5rem; */
+    /* background: linear-gradient(135deg, 
         rgba(23, 29, 34, 0.9) 0%, 
         rgba(32, 38, 46, 0.95) 50%, 
         rgba(23, 29, 34, 0.9) 100%);
@@ -892,7 +893,7 @@ input[type=text]::placeholder {
     border-radius: 8px;
     box-shadow: 
         0 0 20px rgba(0, 0, 0, 0.8),
-        inset 0 0 10px rgba(100, 100, 100, 0.1);
+        inset 0 0 10px rgba(100, 100, 100, 0.1); */
 }
 
 .counter-section {
@@ -905,7 +906,7 @@ input[type=text]::placeholder {
 .counter-title {
     font-family: var(--truth-title-font), serif;
     font-size: 1.1rem;
-    margin-bottom: 1rem;
+    /* margin-bottom: 1rem; */
     letter-spacing: 1px;
     text-shadow: var(--text-shadow-params);
 }
@@ -931,12 +932,26 @@ input[type=text]::placeholder {
     stroke-linecap: round;
 }
 
+.gauge-border {
+    fill: none;
+    stroke-width: 1;
+    stroke-linecap: round;
+}
+
+.cultist-border {
+    stroke: var(--dark-red-color);
+}
+
+.detective-border {
+    stroke: var(--link-color);
+}
+
 .gauge-fill {
     fill: none;
     stroke-width: 8;
     stroke-linecap: round;
-    stroke-dasharray: 314; /* 2 * π * 50 (circumference) */
-    stroke-dashoffset: 314; /* Start completely empty */
+    stroke-dasharray: 289; /* 2 * π * 46 (circumference) */
+    stroke-dashoffset: 289; /* Start completely empty */
     transition: stroke-dashoffset 0.8s ease, opacity 0.3s ease;
 }
 
@@ -1015,7 +1030,7 @@ input[type=text]::placeholder {
     font-size: 2rem;
     color: var(--news-border-color);
     text-shadow: var(--text-shadow-params);
-    animation: pulse-divider 3s ease-in-out infinite;
+    animation: pulse-divider 10s ease-in-out infinite;
 }
 
 
