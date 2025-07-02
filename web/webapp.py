@@ -106,6 +106,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> li
             "published_at": article["news_published_at"].isoformat(),
             "image_meta": image_meta,
             "reactions": reactions,
+            "counters_change": article["counters_change"],
         }
         html_articles.append(html_article)
 

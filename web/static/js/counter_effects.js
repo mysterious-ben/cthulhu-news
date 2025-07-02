@@ -57,4 +57,55 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Handle vertical bar counter change indicators
+    const counterBars = document.querySelectorAll('.counter-bar[data-change]');
+    
+    counterBars.forEach(counterBar => {
+        const change = parseFloat(counterBar.dataset.change);
+        const barFill = counterBar.querySelector('.bar-fill');
+        
+        // Calculate progress based on change value
+        // Map change values (-1 to +2) to fill percentage (0 to 100%)
+        let progress = 0;
+        if (change > 0) {
+            // Positive changes: map 0-2 to 0-100%
+            progress = Math.min(change / 2, 1);
+        } else if (change < 0) {
+            // Negative changes: show proportional fill with dimmed appearance
+            progress = Math.min(Math.abs(change) / 2, 0.5);
+        }
+        
+        // Convert progress to height percentage
+        const heightPercentage = progress * 100;
+        
+        // Handle different change states
+        if (change === 0) {
+            // Zero change: minimal visibility
+            barFill.style.opacity = '0.2';
+            barFill.style.height = '5%';
+        } else if (change < 0) {
+            // Negative change: dimmed appearance with gray gradient
+            barFill.style.opacity = '0.4';
+            setTimeout(() => {
+                barFill.style.height = `${heightPercentage}%`;
+            }, 300);
+        } else {
+            // Positive change: normal appearance
+            barFill.style.opacity = '1';
+            setTimeout(() => {
+                barFill.style.height = `${heightPercentage}%`;
+            }, 300);
+            
+            // Enhanced glow for significant positive changes
+            if (change >= 1.0) {
+                const isCultist = counterBar.classList.contains('cultist-bar');
+                if (isCultist) {
+                    barFill.style.boxShadow = '0 0 8px rgba(220, 20, 60, 0.9)';
+                } else {
+                    barFill.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.9)';
+                }
+            }
+        }
+    });
 });

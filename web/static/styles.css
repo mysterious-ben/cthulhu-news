@@ -930,20 +930,22 @@ input[type=text]::placeholder {
     stroke: #1a1a1a;
     stroke-width: 8;
     stroke-linecap: round;
+    /* transition: stroke-width 0.3s ease; */
 }
 
 .gauge-border {
     fill: none;
     stroke-width: 1;
     stroke-linecap: round;
+    /* transition: stroke-width 0.3s ease; */
 }
 
 .cultist-border {
-    stroke: var(--dark-red-color);
+    stroke: rgba(180, 80, 80, 0.4);
 }
 
 .detective-border {
-    stroke: var(--link-color);
+    stroke: rgba(167, 180, 254, 0.4);
 }
 
 .gauge-fill {
@@ -952,7 +954,7 @@ input[type=text]::placeholder {
     stroke-linecap: round;
     stroke-dasharray: 289; /* 2 * π * 46 (circumference) */
     stroke-dashoffset: 289; /* Start completely empty */
-    transition: stroke-dashoffset 0.8s ease, opacity 0.3s ease;
+    transition: stroke-dashoffset 0.8s ease, opacity 0.3s ease, stroke-width 0.3s ease;
 }
 
 /* Cultist Gauge Styling */
@@ -999,6 +1001,18 @@ input[type=text]::placeholder {
     opacity: 1;
 }
 
+/* .circular-gauge:hover .gauge-background {
+    stroke-width: 10;
+} */
+
+/* .circular-gauge:hover .gauge-border {
+    stroke-width: 2;
+} */
+
+.circular-gauge:hover .gauge-fill {
+    stroke-width: 12;
+}
+
 /* Pulsing Animation for Full Gauges */
 .gauge-pulse .cultist-fill {
     animation: cultist-gauge-pulse 2s ease-in-out infinite;
@@ -1042,6 +1056,108 @@ input[type=text]::placeholder {
     50% { 
         transform: scale(1.1);
         text-shadow: var(--text-shadow-params), 0 0 15px rgba(100, 100, 100, 0.8);
+    }
+}
+
+/* Article Counter Indicators - Vertical Bars */
+.newspaper-article {
+    position: relative;
+}
+
+.counter-bar {
+    position: absolute;
+    width: 6px;
+    height: 100%;
+    top: 0;
+    background-color: rgba(26, 26, 26, 0.8);
+    border-radius: 3px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.cultist-bar {
+    left: -12px;
+    border: 1px solid rgba(180, 80, 80, 0.4);
+}
+
+.detective-bar {
+    right: -12px;
+    border: 1px solid rgba(167, 180, 254, 0.4);
+}
+
+.bar-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0%;
+    transition: height 0.8s ease;
+    border-radius: 0 0 2px 2px;
+}
+
+.cultist-bar-fill {
+    background: linear-gradient(to top, var(--dark-red-color), rgba(220, 20, 60, 0.7));
+    box-shadow: 0 0 4px rgba(220, 20, 60, 0.6);
+}
+
+.detective-bar-fill {
+    background: linear-gradient(to top, var(--link-color), rgba(59, 130, 246, 0.7));
+    box-shadow: 0 0 4px rgba(59, 130, 246, 0.6);
+}
+
+/* Visual states for different change values */
+.counter-bar[data-change="0"] .bar-fill {
+    opacity: 0.2;
+}
+
+.counter-bar[data-change^="-"] .bar-fill {
+    opacity: 0.4;
+    background: linear-gradient(to top, rgba(100, 100, 100, 0.6), rgba(100, 100, 100, 0.3));
+    box-shadow: none;
+}
+
+.counter-bar:hover {
+    width: 8px;
+}
+
+.cultist-bar:hover {
+    left: -14px;
+}
+
+.detective-bar:hover {
+    right: -14px;
+}
+
+.counter-bar:hover .bar-fill {
+    box-shadow: 0 0 8px rgba(220, 20, 60, 0.8);
+}
+
+.detective-bar:hover .bar-fill {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+}
+
+@media screen and (max-width: 768px) {
+    .counter-bar {
+        width: 4px;
+    }
+    
+    .cultist-bar {
+        left: -8px;
+    }
+    
+    .detective-bar {
+        right: -8px;
+    }
+    
+    .counter-bar:hover {
+        width: 6px;
+    }
+    
+    .cultist-bar:hover {
+        left: -10px;
+    }
+    
+    .detective-bar:hover {
+        right: -10px;
     }
 }
 

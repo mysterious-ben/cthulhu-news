@@ -71,6 +71,14 @@
         <main class="news-area">
             {% for article in news_articles %}
             <article class="news-box newspaper-article" id="article-{{ article['scene_number'] }}">
+                <!-- Counter change indicators as vertical bars -->
+                <div class="counter-bar cultist-bar" data-change="{{ article['counters_change']['cultists'] }}">
+                    <div class="bar-fill cultist-bar-fill"></div>
+                </div>
+                <div class="counter-bar detective-bar" data-change="{{ article['counters_change']['detectives'] }}">
+                    <div class="bar-fill detective-bar-fill"></div>
+                </div>
+                
                 <div class="article-section mundane-news">
                     <h2 class="main-title">{{ article['news_title'] }}</h2>
                     <p class="news-summary drop-cap">{{ article['news_summary'] }}</p>
