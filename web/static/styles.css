@@ -1008,7 +1008,28 @@ input[type=text]::placeholder {
     border: 1px solid var(--news-border-color);
 }
 
-.circular-gauge:hover .gauge-tooltip {
+
+/* Gauge Center Text */
+.gauge-center-text {
+    font-family: var(--main-font), monospace;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    transform-origin: 60px 60px;
+    transform: rotate(90deg);
+}
+
+.cultist-text {
+    fill: var(--dark-red-color);
+}
+
+.detective-text {
+    fill: var(--link-color);
+}
+
+.circular-gauge:hover .gauge-center-text {
     opacity: 1;
 }
 
@@ -1150,29 +1171,26 @@ input[type=text]::placeholder {
 /* Bar Tooltips */
 .bar-tooltip {
     position: absolute;
-    top: -45px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: var(--main-font-color);
-    padding: 6px 12px;
-    border-radius: 4px;
+    top: 50%;
+    transform: translateY(-50%);
     font-family: var(--main-font), monospace;
-    font-size: 0.9rem;
+    font-size: 12px;
+    font-weight: bold;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
     z-index: 10;
-    border: 1px solid var(--news-border-color);
 }
 
 .cultist-bar .bar-tooltip {
-    border-color: var(--dark-red-dimmed);
+    color: var(--dark-red-color);
+    right: -30px;
 }
 
 .detective-bar .bar-tooltip {
-    border-color: var(--link-color-dimmed);
+    color: var(--link-color);
+    left: -30px;
 }
 
 .counter-bar:hover .bar-tooltip {

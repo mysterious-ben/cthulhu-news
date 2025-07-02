@@ -36,10 +36,10 @@
                                 <circle class="gauge-border cultist-border" cx="60" cy="60" r="50"/>
                                 <circle class="gauge-border cultist-border" cx="60" cy="60" r="42"/>
                                 <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="46"/>
+                                <text class="gauge-center-text cultist-text" x="60" y="60" text-anchor="middle" dominant-baseline="central">
+                                    {{ "%.1f"|format(counters['cultists']['counter']) }}
+                                </text>
                             </svg>
-                            <div class="gauge-tooltip">
-                                {{ "%.1f"|format(counters['cultists']['counter']) }}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,10 +58,10 @@
                                 <circle class="gauge-border detective-border" cx="60" cy="60" r="50"/>
                                 <circle class="gauge-border detective-border" cx="60" cy="60" r="42"/>
                                 <circle class="gauge-fill detective-fill" cx="60" cy="60" r="46"/>
+                                <text class="gauge-center-text detective-text" x="60" y="60" text-anchor="middle" dominant-baseline="central">
+                                    {{ "%.1f"|format(counters['detectives']['counter']) }}
+                                </text>
                             </svg>
-                            <div class="gauge-tooltip">
-                                {{ "%.1f"|format(counters['detectives']['counter']) }}
-                            </div>
                         </div>
                     </div>
                 </div>
