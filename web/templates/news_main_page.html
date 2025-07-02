@@ -38,7 +38,7 @@
                                 <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="46"/>
                             </svg>
                             <div class="gauge-tooltip">
-                                {{ "%.1f"|format(counters['cultists']['counter']) }} / {{ counters['cultists']['limit_value']|int }}
+                                {{ "%.1f"|format(counters['cultists']['counter']) }}
                             </div>
                         </div>
                     </div>
@@ -60,7 +60,7 @@
                                 <circle class="gauge-fill detective-fill" cx="60" cy="60" r="46"/>
                             </svg>
                             <div class="gauge-tooltip">
-                                {{ "%.1f"|format(counters['detectives']['counter']) }} / {{ counters['detectives']['limit_value']|int }}
+                                {{ "%.1f"|format(counters['detectives']['counter']) }}
                             </div>
                         </div>
                     </div>
@@ -74,9 +74,15 @@
                 <!-- Counter change indicators as vertical bars -->
                 <div class="counter-bar cultist-bar" data-change="{{ article['counters_change']['cultists'] }}">
                     <div class="bar-fill cultist-bar-fill"></div>
+                    <div class="bar-tooltip">
+                        {% if article['counters_change']['cultists'] > 0 %}+{% endif %}{{ article['counters_change']['cultists'] }}
+                    </div>
                 </div>
                 <div class="counter-bar detective-bar" data-change="{{ article['counters_change']['detectives'] }}">
                     <div class="bar-fill detective-bar-fill"></div>
+                    <div class="bar-tooltip">
+                        {% if article['counters_change']['detectives'] > 0 %}+{% endif %}{{ article['counters_change']['detectives'] }}
+                    </div>
                 </div>
                 
                 <div class="article-section mundane-news">
