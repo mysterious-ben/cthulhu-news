@@ -1,10 +1,10 @@
 import json
 
 import litellm
-from tenacity import retry, stop_after_attempt, wait_fixed
+from loguru import logger
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(1.0))
+# @retry(stop=stop_after_attempt(2), wait=wait_fixed(1.0))
 def get_llm_json_response(
     gpt_role: str,
     gpt_query: str,
@@ -15,6 +15,7 @@ def get_llm_json_response(
         {"role": "system", "content": gpt_role},
         {"role": "user", "content": gpt_query},
     ]
+    logger.debug(f"prompt_length={len(gpt_query)} model={gpt_model} max_tokens={gpt_max_tokens}")
     response = litellm.completion(
         model=gpt_model,  # Can be "gpt-4", "claude-3-opus", "gemini-pro", etc.
         messages=gpt_messages,  # type: ignore

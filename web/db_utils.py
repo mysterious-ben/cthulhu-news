@@ -106,7 +106,7 @@ def _init_total_counters(group_name: str, init_value: float, limit_value: float)
         with conn.cursor() as cursor:
             cursor.execute(
                 """INSERT INTO total_counters (group_name, counter, limit_value)
-                    VALUES (%s, %s, %s),
+                    VALUES (%s, %s, %s)
                     ON CONFLICT (group_name) DO NOTHING""",
                 (group_name, init_value, limit_value),
             )
