@@ -10,10 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const gaugeFill = gauge.querySelector('.gauge-fill');
         
         // Calculate progress (0 to 1)
-        let progress = 0;
-        if (value > 0) {
-            progress = Math.min(value / limit, 1); // Cap at 1 (100%)
-        }
+        let progress = Math.min(value / limit, 1); // Cap at 1 (100%)
         
         // Calculate stroke-dashoffset for circular progress
         // Circumference is 314 (2 * π * 50), so offset should be 314 * (1 - progress)
@@ -66,27 +63,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const barFill = counterBar.querySelector('.bar-fill');
         
         // Calculate progress based on change value
-        // Map change values (-1 to +2) to fill percentage (0 to 100%)
-        let progress = 0;
-        if (change > 0) {
-            // Positive changes: map 0-2 to 0-100%
-            progress = Math.min(change / 2, 1);
-        } else if (change < 0) {
-            // Negative changes: show proportional fill with dimmed appearance
-            progress = Math.min(Math.abs(change) / 2, 0.5);
-        }
-        
+        // Map change values (-1 to +1) to fill percentage (0 to 100%)
+        let progress = Math.min(Math.abs(change), 1);
         // Convert progress to height percentage
         const heightPercentage = progress * 100;
         
         // Handle different change states
-        if (change === 0) {
-            // Zero change: minimal visibility
-            barFill.style.opacity = '0.2';
-            barFill.style.height = '5%';
-        } else if (change < 0) {
+        if (change <= 0) {
             // Negative change: dimmed appearance with gray gradient
-            barFill.style.opacity = '0.4';
+            barFill.style.opacity = '0.5';
             setTimeout(() => {
                 barFill.style.height = `${heightPercentage}%`;
             }, 300);

@@ -72,16 +72,16 @@
             {% for article in news_articles %}
             <article class="news-box newspaper-article" id="article-{{ article['scene_number'] }}">
                 <!-- Counter change indicators as vertical bars -->
-                <div class="counter-bar cultist-bar" data-change="{{ article['counters_change']['cultists'] }}">
+                <div class="counter-bar cultist-bar" data-change="{{ article['scene_counters']['cultists'] }}">
                     <div class="bar-fill cultist-bar-fill"></div>
                     <div class="bar-tooltip">
-                        {% if article['counters_change']['cultists'] > 0 %}+{% endif %}{{ article['counters_change']['cultists'] }}
+                        {% if article['scene_counters']['cultists'] > 0 %}+{% endif %}{{ article['scene_counters']['cultists'] | round(1) }}
                     </div>
                 </div>
-                <div class="counter-bar detective-bar" data-change="{{ article['counters_change']['detectives'] }}">
+                <div class="counter-bar detective-bar" data-change="{{ article['scene_counters']['detectives'] }}">
                     <div class="bar-fill detective-bar-fill"></div>
                     <div class="bar-tooltip">
-                        {% if article['counters_change']['detectives'] > 0 %}+{% endif %}{{ article['counters_change']['detectives'] }}
+                        {% if article['scene_counters']['detectives'] > 0 %}+{% endif %}{{ article['scene_counters']['detectives'] | round(1) }}
                     </div>
                 </div>
                 

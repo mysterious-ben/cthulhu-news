@@ -4,11 +4,11 @@ import time
 from datetime import datetime
 
 import litellm
+import numpy as np
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
 
-import web.db_utils as db_utils
 import web.llm_cthulhu_prompts as prompts
 from shared.llm_utils import get_llm_json_response
 from shared.paths import CTHULHU_IMAGE_DIR
@@ -70,14 +70,32 @@ def _change_protagonists(protagonists: str) -> str:
         raise ValueError(f"unknown protagonists={protagonists}")
 
 
-def _counters_change(protagonists: str, outcome: str) -> WinCounters:
-    counters_change = {"cultists": 0.0, "detectives": 0.0}
-    counter_change_data = prompts.scene_outcomes[outcome]["counter_change"][protagonists]
+def get_truth_factor(truth: float, lie: float) -> float:
+    assert truth >= 0 and lie >= 0, "truth and lie votes must be non-negative"
+    if truth >= lie:
+        truth_factor = (1 + truth) / (1 + lie)
+        truth_factor = np.tanh(truth_factor - 1) + 1  # [1.0, 2.0]
+    else:
+        truth_factor = (1 + lie) / (1 + truth)
+        truth_factor = np.tanh(truth_factor - 1) + 1
+        truth_factor = 1 / truth_factor  # [0.5, 1.0]
+    return truth_factor
 
+
+def compute_scene_counters(scene: Scene) -> WinCounters:
+    outcome = scene["scene_outcome"]
+    protagonists = scene["scene_protagonists"]
+    truth = scene["reactions"]["votes"]["truth"]
+    lie = scene["reactions"]["votes"]["lie"]
+    # comments = scene["reactions"]["comments"]
+    truth_factor = get_truth_factor(truth, lie)
+    counter_change_data: WinCounters = prompts.scene_outcomes[outcome]["counter_change"][
+        protagonists
+    ]
+    scene_counters: WinCounters = {"cultists": 0.0, "detectives": 0.0}
     for group, counter in counter_change_data.items():
-        counters_change[group] += counter
-
-    return counters_change
+        scene_counters[group] += counter * truth_factor
+    return scene_counters
 
 
 def _create_new_scene_parameters(
@@ -101,9 +119,6 @@ def _create_new_scene_parameters(
     ]
     curr_protocol = random.choice(curr_protocol_steps)
     outcome = random.choice([k for k in prompts.scene_outcomes.keys()])
-
-    # Calculate counter difference for this scene
-    counter_change = _counters_change(protagonists, outcome)
 
     if curr_protocol["wins"] and (outcome == "success"):
         story_winner = protagonists
@@ -139,7 +154,7 @@ def _create_new_scene_parameters(
         "scene_trustworthiness": 1,
         "scene_older_versions": [],
         "story_summary": "",
-        "counters_change": counter_change,
+        "scene_counters": {"cultists": 0.0, "detectives": 0.0},
         "scene_ends_story": scene_ends_story,
         "story_winner": story_winner,
         "image_meta": {},
@@ -149,7 +164,19 @@ def _create_new_scene_parameters(
         },
     }
 
+    new_scene["scene_counters"] = compute_scene_counters(new_scene)
+
     return new_scene
+
+
+def sum_scene_counters(
+    win_counters_list: list[WinCounters],
+) -> WinCounters:
+    total_counters: WinCounters = {"cultists": 0.0, "detectives": 0.0}
+    for counters in win_counters_list:
+        for group, counter in counters.items():
+            total_counters[group] += counter
+    return total_counters
 
 
 def generate_cthulhu_news(
@@ -169,14 +196,7 @@ def generate_cthulhu_news(
 
     scene_number = len(scenes_so_far) + 1
 
-    # Get current total counters from database
-    total_counters_dict = db_utils.get_total_counters()
-
-    # Convert to WinCounters format for compatibility with existing logic
-    curr_win_counters: WinCounters = {
-        "cultists": total_counters_dict["cultists"]["counter"],
-        "detectives": total_counters_dict["detectives"]["counter"],
-    }
+    curr_win_counters = sum_scene_counters([a["scene_counters"] for a in scenes_so_far])
 
     for news_article, timestamp in zip(news_articles, timestamps):
         if len(scenes_so_far) == 0:
@@ -240,10 +260,8 @@ def generate_cthulhu_news(
             assert v is not None, f"scene parameter '{k}' is None"
             assert v != "", f"scene parameter '{k}' = ''"
 
-        curr_win_counters = db_utils.calculate_new_counters(
-            curr_win_counters, scene["counters_change"]
-        )
-        db_utils.update_total_counters(curr_win_counters)
+        for k, _ in curr_win_counters.items():
+            curr_win_counters[k] += scene["scene_counters"][k]
 
         scenes_so_far.append(scene)
 

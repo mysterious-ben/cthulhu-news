@@ -19,7 +19,7 @@ import web.mapping as mapping
 from prefect import flow, task
 from prefect.schedules import Cron
 from shared.paths import CTHULHU_IMAGE_DIR, WEB_ETL_LOG_PATH
-from web.llm_cthulhu_new import add_cthulhu_images, generate_cthulhu_news
+from web.llm_cthulhu_logic import add_cthulhu_images, generate_cthulhu_news
 
 load_dotenv(find_dotenv())
 
@@ -123,10 +123,14 @@ def create_and_upload_cthulhu_article(
     elif len(news_articles) > 1:
         raise ValueError(f"Expected 1 news article, got {len(news_articles)}")
     cthulhu_articles = dbu.load_formatted_cthulhu_articles()
-    to_2 = to_ if to_ is not None else datetime.now(tz=timezone.utc)
-    new_cthulhu_articles = generate_cthulhu_news(cthulhu_articles, news_articles, [to_2])
+    to_or_now = to_ if to_ is not None else datetime.now(tz=timezone.utc)
+    new_cthulhu_articles = generate_cthulhu_news(
+        cthulhu_articles, news_articles, [to_or_now]
+    )
     add_cthulhu_images(new_cthulhu_articles)
+    # TODO: fix unique constraint violation (title)
     dbu.insert_cthulhu_articles(new_cthulhu_articles)
+    dbu.inc_total_counters([a["scene_counters"] for a in new_cthulhu_articles])
     logger.info(f"finished loading a news article count={len(new_cthulhu_articles)}")
     return len(new_cthulhu_articles)
 
@@ -146,8 +150,12 @@ def create_and_upload_cthulhu_article_task(
 
 
 @flow(name="update_cthulhu_articles", log_prints=True)
-def update_cthulhu_articles(fill_gaps: bool = False) -> None:
+def update_cthulhu_articles(fill_gaps: bool = False, update_counters: bool = True) -> None:
     """Wrapper function to create and upload multiple Cthulhu articles."""
+
+    if update_counters:
+        dbu.upd_all_counters()
+        logger.info("updated all counters after news update")
 
     now = datetime.now(tz=timezone.utc)
     lookback_delta = timedelta(seconds=NEWS_LOOKBACK_WINDOW_SECONDS)

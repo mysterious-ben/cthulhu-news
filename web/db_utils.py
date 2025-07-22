@@ -2,7 +2,7 @@ import atexit
 import json
 from datetime import datetime
 from functools import partial
-from typing import Dict, Optional
+from typing import Optional
 
 import psycopg
 import psycopg.sql as sql
@@ -14,6 +14,7 @@ from pgvector.psycopg import register_vector
 from psycopg.types.json import Jsonb, set_json_dumps, set_json_loads
 from psycopg_pool import ConnectionPool
 
+import web.llm_cthulhu_logic as logic
 import web.llm_cthulhu_prompts as prompts
 import web.mapping as mapping
 
@@ -170,15 +171,15 @@ def _get_all_cthulhu_articles() -> list[dict]:
     return articles
 
 
-def _process_if_json(value: str) -> bool:
-    if isinstance(value, str):
-        try:
-            json.loads(value)
-            return True
-        except json.JSONDecodeError:
-            return False
-    else:
-        return False
+# def _process_if_json(value: str) -> bool:
+#     if isinstance(value, str):
+#         try:
+#             json.loads(value)
+#             return True
+#         except json.JSONDecodeError:
+#             return False
+#     else:
+#         return False
 
 
 def load_formatted_cthulhu_articles(scene_number: Optional[int] = None) -> list[mapping.Scene]:
@@ -271,6 +272,36 @@ def get_cthulhu_article_votes(scene_number: int) -> Optional[dict]:
     return rows[0]
 
 
+def upd_cthulhu_article_counters(
+    scene_number: int, article: mapping.Scene, update_total_counters: bool = True
+) -> None:
+    """Update counters for an Chthulhu article
+
+    Also updated the article object
+    """
+
+    assert scene_number == article["scene_number"]
+    old_counters = article["scene_counters"].copy()
+    new_counters = logic.compute_scene_counters(scene=article)
+    article["scene_counters"] = new_counters
+    with pgpool.connection() as conn:
+        query = sql.SQL("""\
+UPDATE news
+SET scene_counters = {counters}::jsonb
+WHERE scene_number = {scene_number}
+""").format(
+            counters=Jsonb(new_counters),
+            scene_number=sql.Placeholder(),
+        )
+        conn.execute(query, (scene_number,))
+        conn.commit()
+        logger.info(f"updated counters for article {scene_number} with {new_counters}")
+
+    if update_total_counters:
+        counter_diff = {k: new_counters[k] - old_counters.get(k, 0) for k in new_counters}
+        inc_total_counters([counter_diff])
+
+
 def inc_cthulhu_article_vote(scene_number: int, vote: str, user: Optional[str] = None):
     """Increment votes for an Chthulhu article
 
@@ -325,7 +356,7 @@ WHERE scene_number = {scene_number}
         conn.commit()
 
 
-def get_total_counters() -> Dict[str, mapping.TotalCounters]:
+def get_total_counters() -> dict[str, mapping.TotalCounters]:
     """Get current total counters for all groups."""
     with pgpool.connection() as conn:
         with conn.cursor() as cursor:
@@ -341,7 +372,27 @@ def get_total_counters() -> Dict[str, mapping.TotalCounters]:
             return result
 
 
-def update_total_counters(curr_win_counters: mapping.WinCounters) -> None:
+def inc_total_counters(win_counters_change_list: list[mapping.WinCounters]) -> None:
+    """Update total counters by applying the differences from a scene."""
+    win_counters_change = logic.sum_scene_counters(win_counters_change_list)
+    with pgpool.connection() as conn:
+        with conn.cursor() as cursor:
+            query = sql.SQL("""
+                UPDATE total_counters
+                SET counter = counter + {counter}
+                WHERE group_name = {group_name}
+            """).format(
+                counter=sql.Placeholder("counter"),
+                group_name=sql.Placeholder("group_name"),
+            )
+
+            for group_name, group_counter in win_counters_change.items():
+                cursor.execute(query, {"counter": group_counter, "group_name": group_name})
+            conn.commit()
+            logger.info(f"increased total counters: {win_counters_change}")
+
+
+def set_total_counters(win_counters: mapping.WinCounters) -> None:
     """Update total counters by applying the differences from a scene."""
     with pgpool.connection() as conn:
         with conn.cursor() as cursor:
@@ -354,18 +405,17 @@ def update_total_counters(curr_win_counters: mapping.WinCounters) -> None:
                 group_name=sql.Placeholder("group_name"),
             )
 
-            for group_name, group_counter in curr_win_counters.items():
+            for group_name, group_counter in win_counters.items():
                 cursor.execute(query, {"counter": group_counter, "group_name": group_name})
             conn.commit()
-            logger.info(f"updated total counters: {curr_win_counters}")
+            logger.info(f"set total counters: {win_counters}")
 
 
-def calculate_new_counters(
-    counters_before: mapping.WinCounters, counters_diff: mapping.WinCounters
-) -> mapping.WinCounters:
-    """Calculate the difference between before and after counters."""
-    assert counters_before.keys() == counters_diff.keys(), "Inconsistent keys"
+def upd_all_counters() -> None:
+    """Update all counters in the total_counters table."""
+    articles = load_formatted_cthulhu_articles()
+    for article in articles:
+        upd_cthulhu_article_counters(scene_number=article["scene_number"], article=article)
 
-    new_counters = {k: counters_before[k] + counters_diff[k] for k in counters_before.keys()}
-
-    return new_counters
+    total_counters = logic.sum_scene_counters([a["scene_counters"] for a in articles])
+    set_total_counters(total_counters)

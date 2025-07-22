@@ -106,7 +106,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> li
             "published_at": article["news_published_at"].isoformat(),
             "image_meta": image_meta,
             "reactions": reactions,
-            "counters_change": article["counters_change"],
+            "scene_counters": article["scene_counters"],
         }
         html_articles.append(html_article)
 
@@ -125,10 +125,7 @@ async def news_main_page(request: Request):
 
     cthulhu_articles = _get_cthulhu_articles_cached()
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
-
-    # Get current total counters for display
     total_counters = dbu.get_total_counters()
-
     response = templates.TemplateResponse(
         "news_main_page.html",
         {"request": request, "news_articles": html_articles, "counters": total_counters},
@@ -173,6 +170,9 @@ async def react_to_article(
 ) -> PlainTextResponse:
     dbu.inc_cthulhu_article_vote(scene_number, vote, user)
     logger.info(f"reacted to the article scene_number={scene_number} vote={vote} user={user}")
+    scene = dbu.load_formatted_cthulhu_articles(scene_number=scene_number)[0]
+    dbu.upd_cthulhu_article_counters(scene_number, article=scene)
+    logger.debug(f"updated counters for scene_number={scene_number}")
     new_vote_counts = dbu.get_cthulhu_article_votes(scene_number=scene_number)
     assert new_vote_counts is not None
     new_count = new_vote_counts[vote]
@@ -190,6 +190,9 @@ async def submit_comment(
     if len(author) == 0 or len(comment) == 0:
         return
 
+    # TODO: validate the comment
+    # TODO: check if the comment is meaningful and affects the article
+
     comment_json: mapping.Comment = {
         "author": author,
         "comment": comment,
@@ -199,6 +202,9 @@ async def submit_comment(
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
     }
     dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)
+    # TODO: enable this when comments are fully implemented
+    # dbu.upd_cthulhu_article_counters(scene_number)
+    # logger.debug(f"updated counters for scene_number={scene_number}")
     cthulhu_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
     _assert_one_article_exists(cthulhu_articles, scene_number)
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)

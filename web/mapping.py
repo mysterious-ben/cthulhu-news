@@ -8,7 +8,7 @@ def _is_valid_sql_column(s):
 
 
 def _is_valid_sql_column_type(s):
-    return bool(re.match(r"^[a-zA-Z\s()]+$", s))
+    return bool(re.match(r"^[a-zA-Z\s()'{}]+$", s))
 
 
 class NewsArticle(TypedDict):
@@ -86,11 +86,11 @@ class Scene(TypedDict):
     scene_trustworthiness: float
     scene_older_versions: list[dict]
     story_summary: str
-    counters_change: WinCounters
     scene_ends_story: bool
     story_winner: str
     image_meta: dict
     reactions: Reactions
+    scene_counters: WinCounters
 
 
 sql_table_columns: dict[str, str] = {
@@ -111,6 +111,7 @@ sql_table_columns: dict[str, str] = {
     "scene_meta": "JSONB NOT NULL",
     "image_meta": "JSONB NOT NULL",
     "reactions": "JSONB NOT NULL",
+    "scene_counters": "JSONB NOT NULL DEFAULT '{}'",
 }
 
 total_counters_table_columns: dict[str, str] = {
@@ -162,7 +163,7 @@ dict_sql_mapping = {
     "scene_outcome_description": ("scene_meta", "scene_outcome_description"),
     "scene_first_sentence": ("scene_meta", "scene_first_sentence"),
     "scene_trustworthiness": ("scene_meta", "scene_trustworthiness"),
-    "counters_change": ("scene_meta", "counters_change"),
+    "scene_counters": "scene_counters",
     "story_winner": ("scene_meta", "story_winner"),
     "image_meta": "image_meta",
     "reactions": "reactions",

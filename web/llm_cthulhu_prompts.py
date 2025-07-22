@@ -440,12 +440,17 @@ scene_types = [
 ]
 
 
-scene_outcomes = {
+class SceneOutcome(TypedDict):
+    description: str
+    counter_change: dict[str, WinCounters]
+
+
+scene_outcomes: dict[str, SceneOutcome] = {
     "success": {
         "description": "The protagonists succeed or make substantial progress towards their goal in the scene",
         "counter_change": {
-            "detectives": {"detectives": 1.0},
-            "cultists": {"cultists": 1.0},
+            "detectives": {"detectives": 0.5},
+            "cultists": {"cultists": 0.5},
         },
     },
     "mixed": {
@@ -533,7 +538,7 @@ _sample_scenes: list[Scene] = [
         "story_summary": "",
         "scene_ends_story": False,
         "story_winner": "NA",
-        "counters_change": {
+        "scene_counters": {
             "cultists": 1.0,
             "detectives": 0.0,
         },
@@ -579,7 +584,7 @@ _sample_scenes: list[Scene] = [
         "story_summary": "",
         "scene_ends_story": False,
         "story_winner": "NA",
-        "counters_change": {
+        "scene_counters": {
             "cultists": 0.0,
             "detectives": -0.2,
         },
@@ -600,7 +605,7 @@ def _format_scene(
     scene: Scene,
 ) -> str:
     s = scene
-    counters_str = " ".join([f"{k}_diff={v}" for k, v in s["counters_change"].items()])
+    counters_str = " ".join([f"{k}_diff={v}" for k, v in s["scene_counters"].items()])
     s_str = f"""\
 Scene #{s["scene_number"]}. {s["scene_timestamp"].strftime(r"%Y-%m-%d")}.
 

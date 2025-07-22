@@ -157,7 +157,8 @@ disable=print-statement,
         no-name-in-module,
         global-statement,
         unspecified-encoding,
-        import-error
+        import-error,
+        fixme
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
