@@ -273,7 +273,7 @@ def get_cthulhu_article_votes(scene_number: int) -> Optional[dict]:
 
 
 def upd_cthulhu_article_counters(
-    scene_number: int, article: mapping.Scene, update_total_counters: bool = True
+    scene_number: int, article: mapping.Scene, update_total_counters: bool
 ) -> None:
     """Update counters for an Chthulhu article
 
@@ -295,7 +295,7 @@ WHERE scene_number = {scene_number}
         )
         conn.execute(query, (scene_number,))
         conn.commit()
-        logger.info(f"updated counters for article {scene_number} with {new_counters}")
+        logger.info(f"updated win counters for article {scene_number} with {new_counters}")
 
     if update_total_counters:
         counter_diff = {k: new_counters[k] - old_counters.get(k, 0) for k in new_counters}
@@ -415,7 +415,8 @@ def upd_all_counters() -> None:
     """Update all counters in the total_counters table."""
     articles = load_formatted_cthulhu_articles()
     for article in articles:
-        upd_cthulhu_article_counters(scene_number=article["scene_number"], article=article)
-
+        upd_cthulhu_article_counters(
+            scene_number=article["scene_number"], article=article, update_total_counters=False
+        )
     total_counters = logic.sum_scene_counters([a["scene_counters"] for a in articles])
     set_total_counters(total_counters)

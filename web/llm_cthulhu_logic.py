@@ -227,10 +227,9 @@ def generate_cthulhu_news(
             protagonists = "cultists"
         elif scenes_so_far[-1]["scene_ends_story"]:
             logger.info("the story has already ended (skip creating a new scene)...")
-            return scenes_so_far[n_initial_scenes:]
+            return []
         else:
             protagonists = _change_protagonists(scenes_so_far[-1]["scene_protagonists"])
-            # win_counters are now read from database, not from previous scene
 
         scene = _create_new_scene_parameters(
             news_article=news_article,
@@ -294,8 +293,6 @@ def generate_cthulhu_news(
             break
 
         scene_number += 1
-        protagonists = _change_protagonists(protagonists)
-
         time.sleep(0.5)
 
     logger.info(

@@ -172,7 +172,7 @@ async def react_to_article(
     dbu.inc_cthulhu_article_vote(scene_number, vote, user)
     logger.info(f"reacted to the article scene_number={scene_number} vote={vote} user={user}")
     scene = dbu.load_formatted_cthulhu_articles(scene_number=scene_number)[0]
-    dbu.upd_cthulhu_article_counters(scene_number, article=scene)
+    dbu.upd_cthulhu_article_counters(scene_number, article=scene, update_total_counters=True)
     logger.debug(f"updated counters for scene_number={scene_number}")
     new_vote_counts = dbu.get_cthulhu_article_votes(scene_number=scene_number)
     assert new_vote_counts is not None

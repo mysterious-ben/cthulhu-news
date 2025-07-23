@@ -4,11 +4,11 @@
 
 import itertools
 from datetime import datetime, timedelta, timezone
-from time import sleep
 from typing import Iterable, Optional
 
 import pymongo
-from dateutil import parser  # type: ignore
+
+# from dateutil import parser  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
@@ -26,7 +26,7 @@ load_dotenv(find_dotenv())
 NEWS_UPDATE_HOURS = env.str("CTHULHU_NEWS_UPDATE_HOURS")
 NEWS_UPDATE_HOURS_PARSED = [int(x.strip()) for x in NEWS_UPDATE_HOURS.split(",")]
 NEWS_LOOKBACK_WINDOW_SECONDS = env.int("CTHULHU_NEWS_LOOKBACK_WINDOW_SECONDS")
-NEWS_MIN_NUMBER = 3
+NEWS_FILL_MAX_WINDOW_DAYS = env.int("CTHULHU_NEWS_FILL_MAX_WINDOW_DAYS")
 MONGO_USER = env.str("MONGO_INITDB_ROOT_USERNAME")
 MONGO_PASSWORD = env.str("MONGO_INITDB_ROOT_PASSWORD")
 MONGO_HOST = env.str("MONGO_HOST")
@@ -34,7 +34,6 @@ MONGO_PORT = env.int("MONGO_PORT")
 MONGODB_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}?retryWrites=true&w=majority"
 MONGO_NEWS_DB = "news"
 MONGO_NEWS_COLLECTION = "gnews"
-CTHULHU_DEFAULT_FIRST_TIMESTAMP = parser.parse(env.str("CTHULHU_DEFAULT_FIRST_TIMESTAMP"))
 CTHULHU_IMAGE_MODEL = "dall-e-3"
 
 init_loguru(file_path=str(WEB_ETL_LOG_PATH))
@@ -114,7 +113,11 @@ def create_and_upload_cthulhu_article(
     Returns the number of loaded news articles (not the uploaded articles)"""
 
     logger.info("started processing a news article...")
-    news_articles = load_mongo_news_articles(from_=from_, to_=to_, limit=1)
+    cthulhu_articles = dbu.load_formatted_cthulhu_articles()
+    news_titles = [a["news_title"] for a in cthulhu_articles]
+    news_articles = load_mongo_news_articles(
+        from_=from_, to_=to_, limit=1, exclude_titles=news_titles
+    )
     if len(news_articles) == 0:
         if raise_on_zero_articles:
             raise ValueError("No news articles found to process.")
@@ -122,11 +125,10 @@ def create_and_upload_cthulhu_article(
         return 0
     elif len(news_articles) > 1:
         raise ValueError(f"Expected 1 news article, got {len(news_articles)}")
-    cthulhu_articles = dbu.load_formatted_cthulhu_articles()
+    elif news_articles[0]["title"] in news_titles:
+        raise ValueError(f"News article with title '{news_articles[0]['title']}' already exists.")
     to_or_now = to_ if to_ is not None else datetime.now(tz=timezone.utc)
-    new_cthulhu_articles = generate_cthulhu_news(
-        cthulhu_articles, news_articles, [to_or_now]
-    )
+    new_cthulhu_articles = generate_cthulhu_news(cthulhu_articles, news_articles, [to_or_now])
     add_cthulhu_images(new_cthulhu_articles)
     # TODO: fix unique constraint violation (title)
     dbu.insert_cthulhu_articles(new_cthulhu_articles)
@@ -138,8 +140,8 @@ def create_and_upload_cthulhu_article(
 @task(
     name="create_and_upload_cthulhu_article",
     task_run_name="create_and_upload_cthulhu_article",
-    retries=2,
-    retry_delay_seconds=30,
+    # retries=2,
+    # retry_delay_seconds=30,
 )
 def create_and_upload_cthulhu_article_task(
     from_: Optional[datetime] = None, to_: Optional[datetime] = None
@@ -149,8 +151,15 @@ def create_and_upload_cthulhu_article_task(
     return create_and_upload_cthulhu_article(from_=from_, to_=to_)
 
 
-@flow(name="update_cthulhu_articles", log_prints=True)
-def update_cthulhu_articles(fill_gaps: bool = False, update_counters: bool = True) -> None:
+@flow(
+    name="update_cthulhu_articles",
+    log_prints=True,
+    # retries=2,
+    # retry_delay_seconds=30,
+)
+def update_cthulhu_articles(
+    fill_gaps: bool = False, update_counters: bool = True, force_update: bool = False
+) -> None:
     """Wrapper function to create and upload multiple Cthulhu articles."""
 
     if update_counters:
@@ -159,11 +168,16 @@ def update_cthulhu_articles(fill_gaps: bool = False, update_counters: bool = Tru
 
     now = datetime.now(tz=timezone.utc)
     lookback_delta = timedelta(seconds=NEWS_LOOKBACK_WINDOW_SECONDS)
+    latest = dbu.latest_scene_timestamp()
+    if latest is None:
+        latest = now - lookback_delta - timedelta(seconds=1)
+    if force_update:
+        logger.debug(f"running with {force_update=}")
+        latest = min(latest, now - lookback_delta - timedelta(seconds=1))
     if fill_gaps:
-        latest = dbu.latest_scene_timestamp()
-        if latest is None:
-            latest = CTHULHU_DEFAULT_FIRST_TIMESTAMP
+        logger.debug(f"running with {fill_gaps=}")
         n_days = (now - latest).days + 1
+        n_days = min(n_days, NEWS_FILL_MAX_WINDOW_DAYS)
         dates = [latest.date() + timedelta(days=x) for x in range(n_days)]
         timestamps = [
             datetime(d.year, d.month, d.day, h, tzinfo=timezone.utc)
@@ -179,8 +193,11 @@ def update_cthulhu_articles(fill_gaps: bool = False, update_counters: bool = Tru
             create_and_upload_cthulhu_article(from_=t - lookback_delta, to_=t)
             logger.info(f"updated news t={dt_to_str(t)}")
     else:
-        create_and_upload_cthulhu_article(from_=now - lookback_delta, to_=now)
-        logger.info(f"updated news now={dt_to_str(now)}")
+        if latest + lookback_delta > now:
+            logger.info(f"no need to update news: latest={dt_to_str(latest)}")
+        else:
+            create_and_upload_cthulhu_article(from_=now - lookback_delta, to_=now)
+            logger.info(f"updated news now={dt_to_str(now)}")
 
 
 def start_cthulhu_etl_with_serve():
@@ -201,6 +218,7 @@ def start_cthulhu_etl_with_serve():
 
 
 if __name__ == "__main__":
-    update_cthulhu_articles()
-    sleep(5)
+    # from time import sleep
+    # update_cthulhu_articles()
+    # sleep(5)
     start_cthulhu_etl_with_serve()
