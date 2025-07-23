@@ -203,7 +203,16 @@ async def submit_comment(
         "accepted": censored_comment["preselected"],  # TODO: add voting logic for acceptance
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
         "comment": censored_comment["censored_comment"],
-        "categories": censored_comment["categories"],
+        "pertinence": censored_comment["pertinence"],
+        "stylistic_quality": censored_comment["stylistic_quality"],
+        "novelty": censored_comment["novelty"],
+        "contradicting": censored_comment["contradicting"],
+        "sentiment": censored_comment["sentiment"],
+        "aggressive": censored_comment["aggressive"],
+        "sexual": censored_comment["sexual"],
+        "spam": censored_comment["spam"],
+        "illegal": censored_comment["illegal"],
+        "unsafe": censored_comment["unsafe"],
     }
 
     dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)

@@ -3,7 +3,7 @@
 <ul>
     {% if article['reactions']['comments'] %}
     {% for comment in article['reactions']['comments'] %}
-    <li>
+    <li{% if comment['accepted'] %} class="comment-accepted"{% endif %}>
         <div class="comment-content">{{ comment['comment'] }} <span class="comment-source">(reported by {{
                 comment['author'] }} on {{
                 comment['created_at'][:10] }})</span></div>

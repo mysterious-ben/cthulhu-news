@@ -785,24 +785,30 @@ Make only essential edits to ensure the comment complies with editorial standard
 - Replace all advertisements with: [censored: advertisement]
 - Correct clear typos and grammatical errors, but preserve the comment's style and intent.
 
-Step 2: Categorize the comment
-Several categories are possible:
-- petrinant: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
-- matching_style: the comment is written in a style that matches the article
-- contradicting: the comment clearly contradicts the article
+Step 2: Evaluate the comment
+- pertinence: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
+- stylistic_quality: the comment is well-written and stylistically appropriate
+- novelty: the comment contains a new information or perspective not previously mentioned
+- contradicting: the comment clearly contradicts the article or other comments
 - sentiment: the comment expresses an emotion or reaction to the article
 - aggressive: the comment is aggressive, rude, or contains profanity
 - sexual: the comment contains sexual content or references
 - spam: the comment is spam or advertisement
 - illegal: the comment contains illegal content or references
 - unsafe: the comment contains content that is not safe for publication for adult audiences
-- other: the comment does not fit into any of the above categories
 
 Return a JSON with the following fields:
-- "censored_comment": "[revised comment here]",
-- "relevant": true,   // or false if the comment is not relevant to the news article
-- "safe": true,       // or false if the comment is not safe for publication
-- "categories": ["pertinent", "sentiment"]  // or any other categories
+- censored_comment: revised comment here
+- pertinence: low, medium, or high
+- stylistic_quality: low, medium, or high
+- novelty: low, medium, or high
+- contradicting: yes or no
+- sentiment: positive, negative, neutral, or mixed
+- aggressive: yes or no
+- sexual: yes or no
+- spam: yes or no
+- illegal: yes or no
+- unsafe: yes or no
 
 COMMENT:
 {comment}
@@ -819,28 +825,32 @@ def create_censorship_prompt(comment: str, scene: Scene) -> str:
 
 censorship_expected_json_fields = {
     "censored_comment": {"split": False, "force_lower": False},
-    "relevant": {"is_bool": True},
-    "safe": {"is_bool": True},
-    "categories": {
-        "split": True,
+    "pertinence": {"force_lower": True, "votes": ["low", "medium", "high"]},
+    "stylistic_quality": {"force_lower": True, "votes": ["low", "medium", "high"]},
+    "novelty": {"force_lower": True, "votes": ["low", "medium", "high"]},
+    "contradicting": {"force_lower": True, "votes": ["yes", "no"]},
+    "sentiment": {
         "force_lower": True,
-        "votes": [
-            "pertinant",
-            "matching_style",
-            "contradicting",
-            "sentiment",
-            "aggressive",
-            "sexual",
-            "spam",
-            "illegal",
-            "unsafe",
-            "other",
-        ],
+        "votes": ["positive", "negative", "neutral", "mixed"],
     },
+    "aggressive": {"force_lower": True, "votes": ["yes", "no"]},
+    "sexual": {"force_lower": True, "votes": ["yes", "no"]},
+    "spam": {"force_lower": True, "votes": ["yes", "no"]},
+    "illegal": {"force_lower": True, "votes": ["yes", "no"]},
+    "unsafe": {"force_lower": True, "votes": ["yes", "no"]},
 }
 
 
 class CensoredComment(TypedDict):
     censored_comment: str
-    categories: list[str]
+    pertinence: str
+    stylistic_quality: str
+    novelty: str
+    contradicting: str
+    sentiment: str
+    aggressive: str
+    sexual: str
+    spam: str
+    illegal: str
+    unsafe: str
     preselected: bool

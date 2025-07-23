@@ -54,7 +54,16 @@ class Comment(TypedDict):
     accepted: bool  # the comment is accepted to be the part of the story
     votes: Votes
     comment: str
-    categories: list[str]
+    pertinence: str
+    stylistic_quality: str
+    novelty: str
+    contradicting: str
+    sentiment: str
+    aggressive: str
+    sexual: str
+    spam: str
+    illegal: str
+    unsafe: str
 
 
 class Reactions(TypedDict):

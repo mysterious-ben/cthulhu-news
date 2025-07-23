@@ -56,7 +56,7 @@ def _parse_llm_json_response(
                     value_is_correct = False
             else:
                 value = response_json[field]
-                if conditions["split"]:
+                if conditions.get("split", False):
                     if isinstance(value, str):
                         value = [v.strip() for v in value.split(",")]
                     elif isinstance(value, list):
@@ -368,17 +368,34 @@ def censor_comment(
         gpt_model=gpt_model,
         gpt_max_tokens=gpt_max_tokens,
     )
-    c_response_json = _parse_llm_json_response(
+    c_json = _parse_llm_json_response(
         expected_fields=prompts.censorship_expected_json_fields,
         response_json=response_json,
         raise_on_error=True,
     )
-    preselected = {"pertinant", "matching_style"}.issubset(
-        set(c_response_json["categories"])
-    ) and ("unsafe" not in c_response_json["categories"])
+    logger.debug(
+        f"censored the comment='{c_json['censored_comment'][:20]}...' "
+        f"pertinence={c_json['pertinence']} stylistic_quality={c_json['stylistic_quality']} "
+        f"novelty={c_json['novelty']} unsafe={c_json['unsafe']}"
+    )
+    preselected = (
+        (c_json["pertinence"] == "high" or c_json["pertinence"] == "medium")
+        and (c_json["stylistic_quality"] == "high" or c_json["stylistic_quality"] == "medium")
+        and (c_json["novelty"] == "high" or c_json["novelty"] == "medium")
+        and (c_json["unsafe"] == "no")
+    )
     censored_comment: prompts.CensoredComment = {
-        "censored_comment": c_response_json["censored_comment"],
-        "categories": c_response_json["categories"],
+        "censored_comment": c_json["censored_comment"],
+        "pertinence": c_json["pertinence"],
+        "stylistic_quality": c_json["stylistic_quality"],
+        "novelty": c_json["novelty"],
+        "contradicting": c_json["contradicting"],
+        "sentiment": c_json["sentiment"],
+        "aggressive": c_json["aggressive"],
+        "sexual": c_json["sexual"],
+        "spam": c_json["spam"],
+        "illegal": c_json["illegal"],
+        "unsafe": c_json["unsafe"],
         "preselected": preselected,
     }
     return censored_comment
