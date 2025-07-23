@@ -17,9 +17,10 @@ from web.mapping import NewsArticle, Scene, WinCounters
 load_dotenv(find_dotenv())
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-TEXT_MODEL_WRITER = env.str("TEXT_CTHULHU_MODEL")
+TEXT_MODEL_WRITER = env.str("TEXT_MODEL_WRITER")
 TEXT_MODEL_SUMMARIZER = env.str("TEXT_MODEL_SUMMARIZER")
-TEXT_MODEL_MAX_TOKENS = env.int("TEXT_MODEL_MAX_TOKENS")
+TEXT_MODEL_WRITER_MAX_TOKENS = env.int("TEXT_MODEL_WRITER_MAX_TOKENS")
+TEXT_MODEL_SUMMARIZER_MAX_TOKENS = env.int("TEXT_MODEL_SUMMARIZER_MAX_TOKENS")
 
 CTHULHU_IMAGE_MODEL = "dall-e-3"
 
@@ -40,17 +41,39 @@ def _parse_llm_json_response(
         if field in response_json:
             if conditions.get("is_int", False):
                 value = int(response_json[field])
+            elif conditions.get("is_bool", False):
+                if isinstance(response_json[field], bool):
+                    value = response_json[field]
+                elif isinstance(response_json[field], str):
+                    v = response_json[field].strip().lower()
+                    if v in ["true", "yes", "1"]:
+                        value = True
+                    elif v in ["false", "no", "0"]:
+                        value = False
+                    else:
+                        value_is_correct = False
+                else:
+                    value_is_correct = False
             else:
                 value = response_json[field]
-                value = value.strip()
-                if conditions["force_lower"]:
-                    value = value.lower()
                 if conditions["split"]:
-                    value = [v.strip() for v in value.split(",")]  # type: ignore
-                    if conditions["votes"]:
+                    if isinstance(value, str):
+                        value = [v.strip() for v in value.split(",")]
+                    elif isinstance(value, list):
+                        value = [v.strip() for v in value]
+                    else:
+                        raise ValueError(
+                            f"unexpected type for field '{field}': {type(response_json[field])}"
+                        )
+                    if conditions.get("force_lower", False):
+                        value = [v.lower() for v in value]
+                    if conditions.get("votes", None):
                         value_is_correct = set(value).issubset(set(conditions["votes"]))  # type: ignore
                 else:
-                    if conditions["votes"]:
+                    value = value.strip()
+                    if conditions.get("force_lower", False):
+                        value = value.lower()
+                    if conditions.get("votes", None):
                         value_is_correct = value in set(conditions["votes"])  # type: ignore
             if value_is_correct:
                 formatted_gpt_json[field] = value
@@ -185,7 +208,8 @@ def generate_cthulhu_news(
     timestamps: list[datetime],
     gpt_model_writer: str = TEXT_MODEL_WRITER,
     gpt_model_summarizer: str = TEXT_MODEL_SUMMARIZER,
-    gpt_max_tokens: int = TEXT_MODEL_MAX_TOKENS,
+    gpt_writer_max_tokens: int = TEXT_MODEL_WRITER_MAX_TOKENS,
+    gpt_summarizer_max_tokens: int = TEXT_MODEL_SUMMARIZER_MAX_TOKENS,
 ) -> list[Scene]:
     """Generate new Cthulhu scenes based on the news articles provided."""
 
@@ -224,7 +248,7 @@ def generate_cthulhu_news(
             gpt_role=prompts.scene_role_prompt,
             gpt_query=scene_prompt,
             gpt_model=gpt_model_writer,
-            gpt_max_tokens=gpt_max_tokens,
+            gpt_max_tokens=gpt_writer_max_tokens,
         )
         scene_response_json = _parse_llm_json_response(
             expected_fields=prompts.scene_expected_json_fields,
@@ -244,7 +268,7 @@ def generate_cthulhu_news(
             gpt_role=prompts.summary_role_prompt,
             gpt_query=summary_prompt,
             gpt_model=gpt_model_summarizer,
-            gpt_max_tokens=gpt_max_tokens,
+            gpt_max_tokens=gpt_summarizer_max_tokens,
         )
         summary_response_json = _parse_llm_json_response(
             expected_fields=prompts.summary_expected_json_fields,
@@ -329,3 +353,43 @@ def add_cthulhu_images(scenes: list[Scene]) -> None:
             )
 
     logger.info(f"generated gpt cthulhu images count={len(scenes)}")
+
+
+def censor_comment(
+    comment: str,
+    scene: Scene,
+    gpt_model: str = TEXT_MODEL_WRITER,
+    gpt_max_tokens: int = TEXT_MODEL_WRITER_MAX_TOKENS,
+) -> prompts.CensoredComment:
+    """Verify if the comment is valid for the given scene."""
+
+    censorship_prompt = prompts.create_censorship_prompt(comment=comment, scene=scene)
+
+    response_json = get_llm_json_response(
+        gpt_role=prompts.censorship_role_prompt,
+        gpt_query=censorship_prompt,
+        gpt_model=gpt_model,
+        gpt_max_tokens=gpt_max_tokens,
+    )
+    c_response_json = _parse_llm_json_response(
+        expected_fields=prompts.censorship_expected_json_fields,
+        response_json=response_json,
+        raise_on_error=True,
+    )
+    preselected = {"pertinant", "matching_style"}.issubset(
+        set(c_response_json["categories"])
+    ) and ("unsafe" not in c_response_json["categories"])
+    censored_comment: prompts.CensoredComment = {
+        "censored_comment": c_response_json["censored_comment"],
+        "categories": c_response_json["categories"],
+        "preselected": preselected,
+    }
+    return censored_comment
+
+
+# def _find_story_context(
+#     text: str,
+#     scenes: list[Scene],
+# ) -> str:
+#     """Find the relevant context in the story for the given text."""
+#     ...

@@ -19,6 +19,7 @@ from PIL import Image
 
 import web.db_utils as dbu
 import web.mapping as mapping
+import web.llm_cthulhu_logic as logic
 from shared.paths import CTHULHU_IMAGE_DIR, HTML_STATIC_DIR, TEMPLATES_DIR, WEB_APP_LOG_PATH
 
 load_dotenv(find_dotenv())
@@ -190,17 +191,21 @@ async def submit_comment(
     if len(author) == 0 or len(comment) == 0:
         return
 
-    # TODO: validate the comment
-    # TODO: check if the comment is meaningful and affects the article
+    article = dbu.load_formatted_cthulhu_articles(scene_number=scene_number)[0]
+    censored_comment = logic.censor_comment(comment=comment, scene=article)
 
     comment_json: mapping.Comment = {
         "author": author,
-        "comment": comment,
+        "original_comment": comment,
         "created_at": datetime.now(),
         "hidden": False,
-        "accepted": False,
+        "preselected": censored_comment["preselected"],
+        "accepted": censored_comment["preselected"],  # TODO: add voting logic for acceptance
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
+        "comment": censored_comment["censored_comment"],
+        "categories": censored_comment["categories"],
     }
+
     dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)
     # TODO: enable this when comments are fully implemented
     # dbu.upd_cthulhu_article_counters(scene_number)

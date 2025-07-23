@@ -47,11 +47,14 @@ class Votes(TypedDict):
 
 class Comment(TypedDict):
     author: str
-    comment: str
+    original_comment: str
     created_at: datetime
-    hidden: bool
-    accepted: bool
+    hidden: bool  # the comment is hidden from the public view
+    preselected: bool  # the comment is preselected to be included in the story
+    accepted: bool  # the comment is accepted to be the part of the story
     votes: Votes
+    comment: str
+    categories: list[str]
 
 
 class Reactions(TypedDict):

@@ -606,6 +606,11 @@ def _format_scene(
 ) -> str:
     s = scene
     counters_str = " ".join([f"{k}_diff={v}" for k, v in s["scene_counters"].items()])
+    comments = [c["comment"] for c in s["reactions"]["comments"] if c["accepted"]]
+    if len(comments) > 0:
+        comments_str = "\n".join(f"- {c}" for c in comments)
+    else:
+        comments_str = "No accepted comments yet."
     s_str = f"""\
 Scene #{s["scene_number"]}. {s["scene_timestamp"].strftime(r"%Y-%m-%d")}.
 
@@ -614,6 +619,9 @@ Today's news article: '{s["news_title"]}'. {s["news_summary"]}
 
 Truth: '{s["scene_title"] if s["scene_title"] else "..."}'. {s["scene_text"] if s["scene_text"] else "..."}
 (written by: {s["scene_narrator"]})
+
+Comments:
+{comments_str}
 
 (debug: protocol_step={s["scene_protocol_step"].replace(" ", "_").lower()} outcome={s["scene_outcome"]} {counters_str})
 -----------
@@ -759,3 +767,80 @@ summary_expected_json_fields = {
 def create_story_summary_prompt(scenes: list[Scene]) -> str:
     story_so_far_str = format_scenes(scenes)
     return _story_summary_prompt.format(story_prompt=story_so_far_str)
+
+
+censorship_role_prompt = (
+    "You are an editor in a newspaper. Your task is to censor and publish public comments."
+)
+
+_censorship_prompt = """\
+Evaluate if the reader's comment is appropriate for publication in our newspaper.
+
+Step 1: Apply minimal, necessary edits
+Make only essential edits to ensure the comment complies with editorial standards, without altering its meaning or tone:
+- Replace all slurs and hate speech with: [censored: rude language]
+- Replace all names of individuals with: [censored: name]
+- Replace all names of the Ancient Ones: [censored: ❦]
+- Replace all external URLs with: [censored: external source]
+- Replace all advertisements with: [censored: advertisement]
+- Correct clear typos and grammatical errors, but preserve the comment's style and intent.
+
+Step 2: Categorize the comment
+Several categories are possible:
+- petrinant: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
+- matching_style: the comment is written in a style that matches the article
+- contradicting: the comment clearly contradicts the article
+- sentiment: the comment expresses an emotion or reaction to the article
+- aggressive: the comment is aggressive, rude, or contains profanity
+- sexual: the comment contains sexual content or references
+- spam: the comment is spam or advertisement
+- illegal: the comment contains illegal content or references
+- unsafe: the comment contains content that is not safe for publication for adult audiences
+- other: the comment does not fit into any of the above categories
+
+Return a JSON with the following fields:
+- "censored_comment": "[revised comment here]",
+- "relevant": true,   // or false if the comment is not relevant to the news article
+- "safe": true,       // or false if the comment is not safe for publication
+- "categories": ["pertinent", "sentiment"]  // or any other categories
+
+COMMENT:
+{comment}
+
+ARTICLE:
+{article}
+"""
+
+
+def create_censorship_prompt(comment: str, scene: Scene) -> str:
+    scene_text = format_scenes([scene])
+    return _censorship_prompt.format(comment=comment, article=scene_text)
+
+
+censorship_expected_json_fields = {
+    "censored_comment": {"split": False, "force_lower": False},
+    "relevant": {"is_bool": True},
+    "safe": {"is_bool": True},
+    "categories": {
+        "split": True,
+        "force_lower": True,
+        "votes": [
+            "pertinant",
+            "matching_style",
+            "contradicting",
+            "sentiment",
+            "aggressive",
+            "sexual",
+            "spam",
+            "illegal",
+            "unsafe",
+            "other",
+        ],
+    },
+}
+
+
+class CensoredComment(TypedDict):
+    censored_comment: str
+    categories: list[str]
+    preselected: bool
