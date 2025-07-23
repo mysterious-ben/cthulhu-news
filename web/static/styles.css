@@ -1230,3 +1230,40 @@ input[type=text]::placeholder {
     }
 }
 
+/* HTMX Loading Indicator Styling */
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.htmx-request .button-text {
+    display: none;
+}
+
+.loading-spinner {
+    color: var(--main-font-color);
+    /* font-style: italic; */
+    animation: pulse-text 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-text {
+    0% { 
+        opacity: 0.7;
+        text-shadow: 0 0 2px var(--main-font-color);
+    }
+    100% { 
+        opacity: 1;
+        text-shadow: 0 0 6px var(--main-font-color), 0 0 10px var(--link-color-glow);
+    }
+}
+
+/* Disable button during loading */
+.htmx-request button {
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+

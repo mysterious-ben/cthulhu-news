@@ -27,7 +27,12 @@
     <textarea name="comment" rows="3" placeholder="Your rumor about this event..." required></textarea><br />
     <input type="text" name="author" placeholder="Your (fake) name" required style="float: right;"><br />
     <div style="clear: both; text-align: center;">
-        <button class="button-comment" type="submit">Add a new rumour</button>
+        <button class="button-comment" type="submit">
+            <span class="button-text">Add a new rumour</span>
+            <span class="htmx-indicator loading-spinner">
+                (summoning...)
+            </span>
+        </button>
     </div>
 </form>
 
