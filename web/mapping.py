@@ -2,6 +2,10 @@ import re
 from datetime import datetime
 from typing import Any, TypedDict
 
+import numpy as np
+
+EMBEDDING_VECTOR_SIZE = 1536
+
 
 def _is_valid_sql_column(s):
     return bool(re.match(r"^[a-zA-Z_]+$", s))
@@ -95,6 +99,7 @@ class Scene(TypedDict):
     scene_first_sentence: str
     scene_title: str
     scene_text: str
+    scene_vector: np.ndarray
     scene_trustworthiness: float
     scene_older_versions: list[dict]
     story_summary: str
@@ -152,6 +157,7 @@ dict_sql_mapping = {
     "news_published_at": "news_published_at",
     "scene_title": "scene_title",
     "scene_text": "scene_text",
+    "scene_vector": "scene_vector",
     "story_summary": "story_summary",
     "scene_ends_story": "scene_ends_story",
     "scene_older_versions": "scene_older_versions",
@@ -189,8 +195,8 @@ if (ks1 := set(dict_sql_mapping.keys())) != (ks2 := set(Scene.__annotations__.ke
     raise AssertionError(f"mapping keys error: key mismatch {ks1 - ks2} | {ks2 - ks1}")
 
 if not (
-    vs1 := set([v if isinstance(v, str) else v[0] for v in dict_sql_mapping.values()])
-).issubset((vs2 := set(sql_table_columns.keys()))):
+    vs1 := {v if isinstance(v, str) else v[0] for v in dict_sql_mapping.values()}
+).issubset(vs2 := set(sql_table_columns.keys())):
     raise AssertionError(f"mapping values error: not in a subset {vs1 - vs2}")
 
 

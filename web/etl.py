@@ -3,8 +3,8 @@
 ###################################
 
 import itertools
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Optional
 
 import pymongo
 
@@ -44,18 +44,18 @@ dbu.init_local_news_db()
 dbu.update_total_counter_limits()
 
 
-def dt_to_str(dt: Optional[datetime]) -> str:
+def dt_to_str(dt: datetime | None) -> str:
     if dt is None:
         return "None"
     return dt.strftime(r"%Y-%m-%dT%H:%M:%SZ")
 
 
 def load_mongo_news_articles(
-    from_: Optional[datetime],
-    to_: Optional[datetime],
+    from_: datetime | None,
+    to_: datetime | None,
     limit: int,
-    exclude_titles: Optional[list[str]] = None,
-    exclude_ids: Optional[list[str]] = None,
+    exclude_titles: list[str] | None = None,
+    exclude_ids: list[str] | None = None,
 ) -> list[mapping.NewsArticle]:
     """Download news articles from the Mongo database."""
 
@@ -106,7 +106,7 @@ def load_mongo_news_articles(
 
 
 def create_and_upload_cthulhu_article(
-    from_: Optional[datetime], to_: Optional[datetime], raise_on_zero_articles: bool = False
+    from_: datetime | None, to_: datetime | None, raise_on_zero_articles: bool = False
 ) -> int:
     """Download news articles, add Chthulhu stories and images, and upload into the web database.
 
@@ -144,7 +144,7 @@ def create_and_upload_cthulhu_article(
     # retry_delay_seconds=30,
 )
 def create_and_upload_cthulhu_article_task(
-    from_: Optional[datetime] = None, to_: Optional[datetime] = None
+    from_: datetime | None = None, to_: datetime | None = None
 ) -> int:
     """Task to create and upload a Cthulhu article."""
     logger.info("start task to create and upload Cthulhu article")

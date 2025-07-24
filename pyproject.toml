@@ -60,6 +60,22 @@ jupyter = [
 [tool.ruff]
 line-length = 99
 target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
 exclude = [
     ".eggs",
     ".git",
@@ -81,6 +97,11 @@ exclude = [
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["web", "db", "shared", "prefect"]
+force-single-line = false
+split-on-trailing-comma = true
 
 [tool.pytest.ini_options]
 markers = [

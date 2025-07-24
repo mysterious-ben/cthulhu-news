@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from typing import TypedDict
 
-from web.mapping import Scene, WinCounters
+import numpy as np
+
+from web.mapping import EMBEDDING_VECTOR_SIZE, Scene, WinCounters
 
 ## Counters
 
@@ -363,9 +365,9 @@ group_protocol_steps = {
 }
 
 assert len(group_protocol_steps["cultists"]) == 10
-assert len(set([x["name"] for x in group_protocol_steps["cultists"]])) == 10
+assert len({x["name"] for x in group_protocol_steps["cultists"]}) == 10
 assert len(group_protocol_steps["detectives"]) == 10
-assert len(set([x["name"] for x in group_protocol_steps["detectives"]])) == 10
+assert len({x["name"] for x in group_protocol_steps["detectives"]}) == 10
 
 
 universal_subgoals = [
@@ -533,6 +535,7 @@ _sample_scenes: list[Scene] = [
             "In the biting cold, they prepared, their breaths forming icy sigils in the air — a prelude to an invocation meant to crack reality's thin ice. "
             "The Oracle interpreted these misty runes, her breath quickening as she felt their meaning: a portent of the Great Old One's stirring."
         ),
+        "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1.0,
         "scene_older_versions": [],
         "story_summary": "",
@@ -579,6 +582,7 @@ _sample_scenes: list[Scene] = [
             "The Enchantress, undeterred, watched as reality itself began to ripple, the air thickening with whispers of alternate dimensions. "
             "Despite this setback, the Ravens remain vigilant, knowing that every failed attempt is just a step closer to the truth."
         ),
+        "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1.0,
         "scene_older_versions": [],
         "story_summary": "",
@@ -658,7 +662,7 @@ def format_scenes(scenes: list[Scene]) -> str:
     return "\n\n".join(_format_scene(s) for s in scenes)
 
 
-scene_role_prompt = "You are a fiction writer who writes captivating suspeseful stories inspired by Cthulhu stories by H P Lovecraft."
+scene_role_prompt = "You are a fiction writer who writes captivating suspenseful stories inspired by Cthulhu stories by H P Lovecraft."
 
 _scene_prompt = f"""\
 Please finish the last scene of the following story based on the story outline and provided parameters.
@@ -730,10 +734,7 @@ def create_new_scene_prompt(
         sample_scenes = format_scenes(_sample_scenes)
     else:
         sample_scenes = "N/A"
-    if len(scenes_so_far) == 0:
-        story_summary_str = "N/A"
-    else:
-        story_summary_str = scenes_so_far[-1]["story_summary"]
+    story_summary_str = "N/A" if len(scenes_so_far) == 0 else scenes_so_far[-1]["story_summary"]
     scene_parameters_str = _format_scene_parameters(new_scene)
     return _scene_prompt.format(
         scene_parameters=scene_parameters_str,
@@ -741,6 +742,40 @@ def create_new_scene_prompt(
         story_summary=story_summary_str,
         story_so_far=story_so_far_str,
     )
+
+
+factcheck_story_role_prompt = (
+    "You are an editor for fiction stories inspired by Cthulhu stories by H P Lovecraft."
+)
+
+_factcheck_story_prompt = """\
+Make minimal edits to the story below, to ensure that the story is consistent with the facts below. Preserve the style and meaning of the story.
+
+Return a JSON with the following fields:
+- story: the edited story
+- edits: a list of edits made to the story
+
+STORY:
+{story}
+
+FACTS:
+{facts}
+"""
+
+
+def create_factcheck_story_prompt(text: str, facts: list[str]) -> str:
+    if len(facts) == 0:
+        return text
+    else:
+        return _factcheck_story_prompt.format(
+            story=text, facts="\n".join([f"- {f}" for f in facts])
+        )
+
+
+factcheck_story_expected_json_fields = {
+    "story": {"split": False, "force_lower": False},
+    "edits": {"split": False, "force_lower": False},
+}
 
 
 summary_role_prompt = "You are a fiction writer and story summarizer expert."

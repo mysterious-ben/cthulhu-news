@@ -12,7 +12,7 @@ from loguru import logger
 import web.llm_cthulhu_prompts as prompts
 from shared.llm_utils import get_llm_json_response
 from shared.paths import CTHULHU_IMAGE_DIR
-from web.mapping import NewsArticle, Scene, WinCounters
+from web.mapping import EMBEDDING_VECTOR_SIZE, NewsArticle, Scene, WinCounters
 
 load_dotenv(find_dotenv())
 
@@ -141,7 +141,7 @@ def _create_new_scene_parameters(
         if prompts.check_sign_conditions(x["conditions"], win_counters)
     ]
     curr_protocol = random.choice(curr_protocol_steps)
-    outcome = random.choice([k for k in prompts.scene_outcomes.keys()])
+    outcome = random.choice(list(prompts.scene_outcomes.keys()))
 
     if curr_protocol["wins"] and (outcome == "success"):
         story_winner = protagonists
@@ -174,6 +174,7 @@ def _create_new_scene_parameters(
         "scene_first_sentence": narrator["first_sentence"],
         "scene_title": "",
         "scene_text": "",
+        "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1,
         "scene_older_versions": [],
         "story_summary": "",
@@ -202,6 +203,26 @@ def sum_scene_counters(
     return total_counters
 
 
+def generate_embedding_vector(text: str) -> np.ndarray:
+    """Generate am embedding vector for the given text."""
+
+    # TODO: use a proper embedding model
+    print(text)
+    return np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32)  # Placeholder for an embedding vector
+
+
+def find_story_context(
+    text: str,
+    scenes: list[Scene],
+) -> list[str]:
+    """Find the relevant context in the story for the given text (RAG)."""
+
+    # TODO: implement a more sophisticated context search
+    print(text)
+    print(len(scenes))
+    return []
+
+
 def generate_cthulhu_news(
     scenes_so_far: list[Scene],
     news_articles: list[NewsArticle],
@@ -222,7 +243,7 @@ def generate_cthulhu_news(
 
     curr_win_counters = sum_scene_counters([a["scene_counters"] for a in scenes_so_far])
 
-    for news_article, timestamp in zip(news_articles, timestamps):
+    for news_article, timestamp in zip(news_articles, timestamps, strict=False):
         if len(scenes_so_far) == 0:
             protagonists = "cultists"
         elif scenes_so_far[-1]["scene_ends_story"]:
@@ -242,39 +263,62 @@ def generate_cthulhu_news(
         scene_prompt = prompts.create_new_scene_prompt(
             scenes_so_far=scenes_so_far, new_scene=scene
         )
-
         response_json = get_llm_json_response(
             gpt_role=prompts.scene_role_prompt,
             gpt_query=scene_prompt,
             gpt_model=gpt_model_writer,
             gpt_max_tokens=gpt_writer_max_tokens,
         )
-        scene_response_json = _parse_llm_json_response(
+        scene_json = _parse_llm_json_response(
             expected_fields=prompts.scene_expected_json_fields,
             response_json=response_json,
             raise_on_error=True,
         )
 
-        scene["scene_title"] = scene_response_json["scene_title"]
-        scene["scene_text"] = scene_response_json["scene_text"]
+        scene["scene_title"] = scene_json["scene_title"]
+        scene["scene_text"] = scene_json["scene_text"]
         logger.debug(
             f"added gpt generated fields title='{scene['scene_title']}' & scene_text='{scene['scene_text'][:20]}...'"
         )
 
-        summary_prompt = prompts.create_story_summary_prompt(scenes=scenes_so_far + [scene])
+        scene["scene_vector"] = generate_embedding_vector(scene["scene_text"])
+        logger.debug("generated scene embedding vector")
 
+        relevant_context = find_story_context(
+            text=scene["scene_text"],
+            scenes=scenes_so_far,
+        )
+
+        factcheck_prompt = prompts.create_factcheck_story_prompt(
+            text=scene["scene_text"],
+            facts=relevant_context,
+        )
+        response_json = get_llm_json_response(
+            gpt_role=prompts.factcheck_story_role_prompt,
+            gpt_query=factcheck_prompt,
+            gpt_model=gpt_model_writer,
+            gpt_max_tokens=gpt_writer_max_tokens,
+        )
+        factcheck_json = _parse_llm_json_response(
+            expected_fields=prompts.factcheck_story_expected_json_fields,
+            response_json=response_json,
+            raise_on_error=True,
+        )
+        scene["scene_text"] = factcheck_json["story"]
+
+        summary_prompt = prompts.create_story_summary_prompt(scenes=scenes_so_far + [scene])
         response_json = get_llm_json_response(
             gpt_role=prompts.summary_role_prompt,
             gpt_query=summary_prompt,
             gpt_model=gpt_model_summarizer,
             gpt_max_tokens=gpt_summarizer_max_tokens,
         )
-        summary_response_json = _parse_llm_json_response(
+        summary_json = _parse_llm_json_response(
             expected_fields=prompts.summary_expected_json_fields,
             response_json=response_json,
             raise_on_error=True,
         )
-        scene["story_summary"] = summary_response_json["story_summary"]
+        scene["story_summary"] = summary_json["story_summary"]
         logger.debug(
             f"added gpt generated fields story_summary='{scene['story_summary'][:20]}...'"
         )
@@ -399,11 +443,3 @@ def censor_comment(
         "preselected": preselected,
     }
     return censored_comment
-
-
-# def _find_story_context(
-#     text: str,
-#     scenes: list[Scene],
-# ) -> str:
-#     """Find the relevant context in the story for the given text."""
-#     ...

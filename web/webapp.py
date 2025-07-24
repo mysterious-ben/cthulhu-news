@@ -4,7 +4,6 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import cachetools
 from dotenv import find_dotenv, load_dotenv
@@ -18,8 +17,8 @@ from logutil import init_loguru
 from PIL import Image
 
 import web.db_utils as dbu
-import web.mapping as mapping
 import web.llm_cthulhu_logic as logic
+import web.mapping as mapping
 from shared.paths import CTHULHU_IMAGE_DIR, HTML_STATIC_DIR, TEMPLATES_DIR, WEB_APP_LOG_PATH
 
 load_dotenv(find_dotenv())
@@ -115,7 +114,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> li
 
 
 @cachetools.cached(cachetools.TTLCache(maxsize=100, ttl=CTHULHU_NEWS_CACHE_FOR_X_SECONDS))
-def _get_cthulhu_articles_cached(scene_number: Optional[int] = None) -> list[mapping.Scene]:
+def _get_cthulhu_articles_cached(scene_number: int | None = None) -> list[mapping.Scene]:
     return dbu.load_formatted_cthulhu_articles(scene_number=scene_number)
 
 
@@ -167,7 +166,7 @@ async def news_article_page(request: Request, scene_number: int):
 
 @app.post("/react/{vote}/{scene_number}")
 async def react_to_article(
-    vote: str, scene_number: int, user: Optional[str] = None
+    vote: str, scene_number: int, user: str | None = None
 ) -> PlainTextResponse:
     dbu.inc_cthulhu_article_vote(scene_number, vote, user)
     logger.info(f"reacted to the article scene_number={scene_number} vote={vote} user={user}")
@@ -186,7 +185,7 @@ async def submit_comment(
     request: Request,
     author: str = Form(...),
     comment: str = Form(...),
-    user: Optional[str] = None,
+    user: str | None = None,
 ):
     if len(author) == 0 or len(comment) == 0:
         return

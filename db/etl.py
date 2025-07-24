@@ -5,7 +5,7 @@
 import json
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Optional
+from typing import Literal
 
 # import click
 import httpx
@@ -51,8 +51,8 @@ logger.info("downloaded nltk punkt")
 
 def get_news_links_gnews(
     query: str,
-    from_: Optional[datetime],
-    to_: Optional[datetime],
+    from_: datetime | None,
+    to_: datetime | None,
     lang: str,
     limit: int,
     sortby: Literal["publishedAt", "relevance"],
@@ -149,8 +149,8 @@ def save_to_mongo_db(news_articles: list[dict]) -> None:
 
 def load_news(
     query: str,
-    from_: Optional[datetime],
-    to_: Optional[datetime],
+    from_: datetime | None,
+    to_: datetime | None,
 ) -> None:
     """Load a news article, add a GPT summary and save to the local db"""
 

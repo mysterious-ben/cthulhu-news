@@ -2,7 +2,6 @@ import atexit
 import json
 from datetime import datetime
 from functools import partial
-from typing import Optional
 
 import psycopg
 import psycopg.sql as sql
@@ -103,18 +102,17 @@ def _create_total_counters_table() -> None:
 
 def _init_total_counters(group_name: str, init_value: float, limit_value: float) -> None:
     """Initialize total_counters table with default values for cultists and detectives."""
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """INSERT INTO total_counters (group_name, counter, limit_value)
+    with pgpool.connection() as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO total_counters (group_name, counter, limit_value)
                     VALUES (%s, %s, %s)
                     ON CONFLICT (group_name) DO NOTHING""",
-                (group_name, init_value, limit_value),
-            )
-            count = cursor.rowcount
-            conn.commit()
-            if count > 0:
-                logger.info(f"initialized total_counters {group_name} with default values")
+            (group_name, init_value, limit_value),
+        )
+        count = cursor.rowcount
+        conn.commit()
+        if count > 0:
+            logger.info(f"initialized total_counters {group_name} with default values")
 
 
 def init_local_news_db():
@@ -127,47 +125,44 @@ def init_local_news_db():
 
 def update_total_counter_limits() -> None:
     """Update the limit value for a specific group in the total_counters table."""
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            for group_name, values in prompts.group_init_counters.items():
-                new_limit = values["limit_value"]
-                cursor.execute(
-                    """UPDATE total_counters SET limit_value = %s WHERE group_name = %s""",
-                    (new_limit, group_name),
-                )
-                conn.commit()
-                logger.info(f"updated total limit for {group_name} to {new_limit}")
+    with pgpool.connection() as conn, conn.cursor() as cursor:
+        for group_name, values in prompts.group_init_counters.items():
+            new_limit = values["limit_value"]
+            cursor.execute(
+                """UPDATE total_counters SET limit_value = %s WHERE group_name = %s""",
+                (new_limit, group_name),
+            )
+            conn.commit()
+            logger.info(f"updated total limit for {group_name} to {new_limit}")
 
 
 def _get_cthulhu_article(scene_number: int) -> list[dict]:
     """Get one Cthulhu article from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible"""
-    with pgpool.connection() as conn:
-        with conn.cursor() as c:
-            c.execute(
-                "SELECT * FROM news WHERE scene_number = %s ORDER BY scene_timestamp DESC",
-                (scene_number,),
-            )
-            row = c.fetchone()
-            assert c.description is not None
-            columns = [x[0] for x in c.description]
+    with pgpool.connection() as conn, conn.cursor() as c:
+        c.execute(
+            "SELECT * FROM news WHERE scene_number = %s ORDER BY scene_timestamp DESC",
+            (scene_number,),
+        )
+        row = c.fetchone()
+        assert c.description is not None
+        columns = [x[0] for x in c.description]
     if row is None:
         return []
-    return [{k: v for k, v in zip(columns, row)}]
+    return [dict(zip(columns, row, strict=False))]
 
 
 def _get_all_cthulhu_articles() -> list[dict]:
     """Get all the Cthulhu articles from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible"""
-    with pgpool.connection() as conn:
-        with conn.cursor() as c:
-            c.execute("SELECT * FROM news ORDER BY scene_timestamp DESC")
-            rows = c.fetchall()
-            assert c.description is not None
-            columns = [x[0] for x in c.description]
-    articles = [{k: v for k, v in zip(columns, row)} for row in rows]
+    with pgpool.connection() as conn, conn.cursor() as c:
+        c.execute("SELECT * FROM news ORDER BY scene_timestamp DESC")
+        rows = c.fetchall()
+        assert c.description is not None
+        columns = [x[0] for x in c.description]
+    articles = [dict(zip(columns, row, strict=False)) for row in rows]
     return articles
 
 
@@ -182,7 +177,7 @@ def _get_all_cthulhu_articles() -> list[dict]:
 #         return False
 
 
-def load_formatted_cthulhu_articles(scene_number: Optional[int] = None) -> list[mapping.Scene]:
+def load_formatted_cthulhu_articles(scene_number: int | None = None) -> list[mapping.Scene]:
     """Get and format Cthulhu article(s) from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible
@@ -249,7 +244,7 @@ def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
     return n_inserted
 
 
-def latest_scene_timestamp() -> Optional[datetime]:
+def latest_scene_timestamp() -> datetime | None:
     with pgpool.connection() as conn:
         row = conn.execute("""SELECT max(scene_timestamp) FROM news""").fetchone()
     if row is None or row[0] is None:
@@ -257,16 +252,15 @@ def latest_scene_timestamp() -> Optional[datetime]:
     return row[0]
 
 
-def get_cthulhu_article_votes(scene_number: int) -> Optional[dict]:
+def get_cthulhu_article_votes(scene_number: int) -> dict | None:
     """Get votes for an Chthulhu article
 
     DANGER: Can be exposed to external API, so SQL injection is possible
     """
-    with pgpool.connection() as conn:
-        with conn.execute(
-            """SELECT reactions->'votes' FROM news WHERE scene_number = %s""", (scene_number,)
-        ) as c:
-            rows = c.fetchone()
+    with pgpool.connection() as conn, conn.execute(
+        """SELECT reactions->'votes' FROM news WHERE scene_number = %s""", (scene_number,)
+    ) as c:
+        rows = c.fetchone()
     if rows is None:
         return None
     return rows[0]
@@ -302,7 +296,7 @@ WHERE scene_number = {scene_number}
         inc_total_counters([counter_diff])
 
 
-def inc_cthulhu_article_vote(scene_number: int, vote: str, user: Optional[str] = None):
+def inc_cthulhu_article_vote(scene_number: int, vote: str, user: str | None = None):
     """Increment votes for an Chthulhu article
 
     DANGER: Can be exposed to external API, so SQL injection is possible
@@ -329,7 +323,7 @@ WHERE scene_number = {scene_number}
 
 
 def submit_cthulhu_article_comment(
-    scene_number: int, comment_json: mapping.Comment, user: Optional[str]
+    scene_number: int, comment_json: mapping.Comment, user: str | None
 ):
     """Submit a comment for an Chthulhu article
 
@@ -358,57 +352,54 @@ WHERE scene_number = {scene_number}
 
 def get_total_counters() -> dict[str, mapping.TotalCounters]:
     """Get current total counters for all groups."""
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT group_name, counter, limit_value FROM total_counters")
-            rows = cursor.fetchall()
+    with pgpool.connection() as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT group_name, counter, limit_value FROM total_counters")
+        rows = cursor.fetchall()
 
-            result = {}
-            for row in rows:
-                group_name, counter, limit_value = row
-                result[group_name] = mapping.TotalCounters(
-                    group_name=group_name, counter=counter, limit_value=limit_value
-                )
-            return result
+        result = {}
+        for row in rows:
+            group_name, counter, limit_value = row
+            result[group_name] = mapping.TotalCounters(
+                group_name=group_name, counter=counter, limit_value=limit_value
+            )
+        return result
 
 
 def inc_total_counters(win_counters_change_list: list[mapping.WinCounters]) -> None:
     """Update total counters by applying the differences from a scene."""
     win_counters_change = logic.sum_scene_counters(win_counters_change_list)
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            query = sql.SQL("""
+    with pgpool.connection() as conn, conn.cursor() as cursor:
+        query = sql.SQL("""
                 UPDATE total_counters
                 SET counter = counter + {counter}
                 WHERE group_name = {group_name}
             """).format(
-                counter=sql.Placeholder("counter"),
-                group_name=sql.Placeholder("group_name"),
-            )
+            counter=sql.Placeholder("counter"),
+            group_name=sql.Placeholder("group_name"),
+        )
 
-            for group_name, group_counter in win_counters_change.items():
-                cursor.execute(query, {"counter": group_counter, "group_name": group_name})
-            conn.commit()
-            logger.info(f"increased total counters: {win_counters_change}")
+        for group_name, group_counter in win_counters_change.items():
+            cursor.execute(query, {"counter": group_counter, "group_name": group_name})
+        conn.commit()
+        logger.info(f"increased total counters: {win_counters_change}")
 
 
 def set_total_counters(win_counters: mapping.WinCounters) -> None:
     """Update total counters by applying the differences from a scene."""
-    with pgpool.connection() as conn:
-        with conn.cursor() as cursor:
-            query = sql.SQL("""
+    with pgpool.connection() as conn, conn.cursor() as cursor:
+        query = sql.SQL("""
                 UPDATE total_counters
                 SET counter = {counter}
                 WHERE group_name = {group_name}
             """).format(
-                counter=sql.Placeholder("counter"),
-                group_name=sql.Placeholder("group_name"),
-            )
+            counter=sql.Placeholder("counter"),
+            group_name=sql.Placeholder("group_name"),
+        )
 
-            for group_name, group_counter in win_counters.items():
-                cursor.execute(query, {"counter": group_counter, "group_name": group_name})
-            conn.commit()
-            logger.info(f"set total counters: {win_counters}")
+        for group_name, group_counter in win_counters.items():
+            cursor.execute(query, {"counter": group_counter, "group_name": group_name})
+        conn.commit()
+        logger.info(f"set total counters: {win_counters}")
 
 
 def upd_all_counters() -> None:
