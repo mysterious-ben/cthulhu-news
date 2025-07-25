@@ -353,6 +353,22 @@ WHERE scene_number = {scene_number}
         conn.commit()
 
 
+def add_cthulhu_scene_update(scene_number: int, scene_update: str) -> None:
+    """Add a scene update to the scene_updates array for a specific scene.
+
+    DANGER: Can be exposed to external API, so SQL injection is possible
+    """
+    with _pgpool.connection() as conn:
+        query = sql.SQL("""\
+UPDATE news
+SET scene_updates = array_append(scene_updates, %s)
+WHERE scene_number = %s
+""")
+        conn.execute(query, (scene_update, scene_number))
+        conn.commit()
+        logger.info(f"added scene update to scene {scene_number}: {scene_update[:50]}...")
+
+
 def get_total_counters() -> dict[str, mapping.TotalCounters]:
     """Get current total counters for all groups."""
     with _pgpool.connection() as conn, conn.cursor() as cursor:
