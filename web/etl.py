@@ -206,7 +206,7 @@ def start_cthulhu_etl_with_serve():
     logger.info("serving the Cthulhu news ETL...")
 
     hours_str = ",".join(map(str, NEWS_UPDATE_HOURS_PARSED))
-    cron_expression = f"1 0 {hours_str} * * *"  # minute=0, second=1, specified hours
+    cron_expression = f"0 {hours_str} * * *"  # every day at the specified hours
 
     scheduler = Cron(cron_expression)
     update_cthulhu_articles.serve(
