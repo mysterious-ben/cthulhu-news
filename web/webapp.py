@@ -53,7 +53,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> li
     static_image_dir = HTML_STATIC_DIR / "cthulhu-images"
     html_articles = []
 
-    for article in cthulhu_articles:
+    for article in cthulhu_articles[::-1]:
         # Process image if exists
         image_meta = {}
         if "cthulhu_image_filename" in article["image_meta"]:
@@ -102,6 +102,7 @@ def _prepare_news_articles_for_html(cthulhu_articles: list[mapping.Scene]) -> li
             "news_url": article["news_url"],
             "scene_title": article["scene_title"],
             "scene_text": article["scene_text"],
+            "scene_updates": article["scene_updates"],
             "scene_narrator": masked_narrator,
             "published_at": article["news_published_at"].isoformat(),
             "image_meta": image_meta,
@@ -193,13 +194,14 @@ async def submit_comment(
     article = dbu.load_formatted_cthulhu_articles(scene_number=scene_number)[0]
     censored_comment = logic.censor_comment(comment=comment, scene=article)
 
+    accepted = logic.accept_or_refuse_comment(censored_comment, article)
     comment_json: mapping.Comment = {
         "author": author,
         "original_comment": comment,
         "created_at": datetime.now(),
         "hidden": False,
         "preselected": censored_comment["preselected"],
-        "accepted": censored_comment["preselected"],  # TODO: add voting logic for acceptance
+        "accepted": accepted,
         "votes": {"truth": 0, "lie": 0, "voted_by": []},
         "comment": censored_comment["censored_comment"],
         "pertinence": censored_comment["pertinence"],
@@ -213,11 +215,14 @@ async def submit_comment(
         "illegal": censored_comment["illegal"],
         "unsafe": censored_comment["unsafe"],
     }
-
     dbu.submit_cthulhu_article_comment(scene_number, comment_json, user)
-    # TODO: enable this when comments are fully implemented
-    # dbu.upd_cthulhu_article_counters(scene_number)
-    # logger.debug(f"updated counters for scene_number={scene_number}")
+
+    if comment_json["accepted"]:
+        dbu.add_cthulhu_scene_update(
+            scene_number=scene_number, scene_update=censored_comment["scene_update"]
+        )
+        logger.info(f"added story update for scene_number={scene_number}")
+
     cthulhu_articles = _get_cthulhu_articles_cached(scene_number=scene_number)
     _assert_one_article_exists(cthulhu_articles, scene_number)
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)

@@ -395,6 +395,52 @@ h4 {
     font-family: var(--truth-font), serif;
 }
 
+/* Scene Updates Styling */
+.scene-updates {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(139, 69, 19, 0.1);
+    border-left: 3px solid var(--link-color);
+    border-radius: 0 5px 5px 0;
+}
+
+.updates-title {
+    font-family: var(--truth-title-font), serif;
+    font-size: 1.2rem;
+    color: var(--link-color);
+    margin: 0 0 0.8rem 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.updates-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.update-item {
+    font-family: var(--truth-font), serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 0.8rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.update-item::before {
+    content: "❦";
+    position: absolute;
+    left: 0;
+    color: var(--link-color);
+    font-size: 0.8rem;
+    top: 0.1rem;
+}
+
+.update-item:last-child {
+    margin-bottom: 0;
+}
+
 /* Image Styling */
 .news-image-container {
     text-align: center;

@@ -39,7 +39,7 @@ def configure(conn):
     register_vector(conn)
 
 
-pgpool = ConnectionPool(
+_pgpool = ConnectionPool(
     POSTGRES_CONN_STR,
     open=True,
     check=ConnectionPool.check_connection,
@@ -47,7 +47,7 @@ pgpool = ConnectionPool(
     max_size=5,
     configure=configure,
 )
-atexit.register(pgpool.close)
+atexit.register(_pgpool.close)
 
 
 def default_json_converter(o):
@@ -67,7 +67,7 @@ def pg_connect() -> psycopg.Connection:
 
 
 def _create_news_table() -> None:
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         # conn.execute("""DROP TABLE news""")
 
         col_definitions = []
@@ -87,7 +87,7 @@ def _create_news_table() -> None:
 
 def _create_total_counters_table() -> None:
     """Create the total_counters table if it doesn't exist."""
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         col_definitions = []
         for k, v in mapping.total_counters_table_columns.items():
             col_def = sql.SQL("{} {}").format(sql.Identifier(k), sql.SQL(v))  # type: ignore[arg-type]
@@ -102,7 +102,7 @@ def _create_total_counters_table() -> None:
 
 def _init_total_counters(group_name: str, init_value: float, limit_value: float) -> None:
     """Initialize total_counters table with default values for cultists and detectives."""
-    with pgpool.connection() as conn, conn.cursor() as cursor:
+    with _pgpool.connection() as conn, conn.cursor() as cursor:
         cursor.execute(
             """INSERT INTO total_counters (group_name, counter, limit_value)
                     VALUES (%s, %s, %s)
@@ -125,7 +125,7 @@ def init_local_news_db():
 
 def update_total_counter_limits() -> None:
     """Update the limit value for a specific group in the total_counters table."""
-    with pgpool.connection() as conn, conn.cursor() as cursor:
+    with _pgpool.connection() as conn, conn.cursor() as cursor:
         for group_name, values in prompts.group_init_counters.items():
             new_limit = values["limit_value"]
             cursor.execute(
@@ -140,7 +140,7 @@ def _get_cthulhu_article(scene_number: int) -> list[dict]:
     """Get one Cthulhu article from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible"""
-    with pgpool.connection() as conn, conn.cursor() as c:
+    with _pgpool.connection() as conn, conn.cursor() as c:
         c.execute(
             "SELECT * FROM news WHERE scene_number = %s ORDER BY scene_timestamp DESC",
             (scene_number,),
@@ -157,8 +157,8 @@ def _get_all_cthulhu_articles() -> list[dict]:
     """Get all the Cthulhu articles from the local db
 
     DANGER: Can be exposed to external API, so SQL injection is possible"""
-    with pgpool.connection() as conn, conn.cursor() as c:
-        c.execute("SELECT * FROM news ORDER BY scene_timestamp DESC")
+    with _pgpool.connection() as conn, conn.cursor() as c:
+        c.execute("SELECT * FROM news ORDER BY scene_number ASC")
         rows = c.fetchall()
         assert c.description is not None
         columns = [x[0] for x in c.description]
@@ -235,7 +235,7 @@ def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
         "INSERT INTO news ({}) VALUES ({}) ON CONFLICT (scene_number) DO NOTHING"
     ).format(columns, placeholders)
 
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         with conn.cursor() as c:
             c.executemany(query, docs_to_insert)
             n_inserted = c.rowcount
@@ -245,7 +245,7 @@ def insert_cthulhu_articles(cthulhu_articles: list[mapping.Scene]) -> int:
 
 
 def latest_scene_timestamp() -> datetime | None:
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         row = conn.execute("""SELECT max(scene_timestamp) FROM news""").fetchone()
     if row is None or row[0] is None:
         return None
@@ -257,9 +257,12 @@ def get_cthulhu_article_votes(scene_number: int) -> dict | None:
 
     DANGER: Can be exposed to external API, so SQL injection is possible
     """
-    with pgpool.connection() as conn, conn.execute(
-        """SELECT reactions->'votes' FROM news WHERE scene_number = %s""", (scene_number,)
-    ) as c:
+    with (
+        _pgpool.connection() as conn,
+        conn.execute(
+            """SELECT reactions->'votes' FROM news WHERE scene_number = %s""", (scene_number,)
+        ) as c,
+    ):
         rows = c.fetchone()
     if rows is None:
         return None
@@ -278,7 +281,7 @@ def upd_cthulhu_article_counters(
     old_counters = article["scene_counters"].copy()
     new_counters = logic.compute_scene_counters(scene=article)
     article["scene_counters"] = new_counters
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         query = sql.SQL("""\
 UPDATE news
 SET scene_counters = {counters}::jsonb
@@ -304,7 +307,7 @@ def inc_cthulhu_article_vote(scene_number: int, vote: str, user: str | None = No
     if user is not None:
         raise NotImplementedError
 
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         query = sql.SQL("""\
 UPDATE news
 SET reactions = jsonb_set(
@@ -324,7 +327,7 @@ WHERE scene_number = {scene_number}
 
 def submit_cthulhu_article_comment(
     scene_number: int, comment_json: mapping.Comment, user: str | None
-):
+) -> None:
     """Submit a comment for an Chthulhu article
 
     DANGER: Can be exposed to external API, so SQL injection is possible
@@ -332,7 +335,7 @@ def submit_cthulhu_article_comment(
     if user is not None:
         raise NotImplementedError
 
-    with pgpool.connection() as conn:
+    with _pgpool.connection() as conn:
         query = sql.SQL("""\
 UPDATE news
 SET reactions = jsonb_set(
@@ -352,7 +355,7 @@ WHERE scene_number = {scene_number}
 
 def get_total_counters() -> dict[str, mapping.TotalCounters]:
     """Get current total counters for all groups."""
-    with pgpool.connection() as conn, conn.cursor() as cursor:
+    with _pgpool.connection() as conn, conn.cursor() as cursor:
         cursor.execute("SELECT group_name, counter, limit_value FROM total_counters")
         rows = cursor.fetchall()
 
@@ -368,7 +371,7 @@ def get_total_counters() -> dict[str, mapping.TotalCounters]:
 def inc_total_counters(win_counters_change_list: list[mapping.WinCounters]) -> None:
     """Update total counters by applying the differences from a scene."""
     win_counters_change = logic.sum_scene_counters(win_counters_change_list)
-    with pgpool.connection() as conn, conn.cursor() as cursor:
+    with _pgpool.connection() as conn, conn.cursor() as cursor:
         query = sql.SQL("""
                 UPDATE total_counters
                 SET counter = counter + {counter}
@@ -386,7 +389,7 @@ def inc_total_counters(win_counters_change_list: list[mapping.WinCounters]) -> N
 
 def set_total_counters(win_counters: mapping.WinCounters) -> None:
     """Update total counters by applying the differences from a scene."""
-    with pgpool.connection() as conn, conn.cursor() as cursor:
+    with _pgpool.connection() as conn, conn.cursor() as cursor:
         query = sql.SQL("""
                 UPDATE total_counters
                 SET counter = {counter}
@@ -411,3 +414,25 @@ def upd_all_counters() -> None:
         )
     total_counters = logic.sum_scene_counters([a["scene_counters"] for a in articles])
     set_total_counters(total_counters)
+
+
+def regenerate_all_embeddings() -> None:
+    """Regenerate embeddings for all scenes."""
+    articles = load_formatted_cthulhu_articles()
+    logger.info(f"Regenerating embeddings for {len(articles)} scenes")
+
+    for i, article in enumerate(articles):
+        try:
+            embedding = logic.generate_embedding_vector(article["scene_text"])
+            with _pgpool.connection() as conn:
+                conn.execute(
+                    "UPDATE news SET scene_vector = %s::vector WHERE scene_number = %s",
+                    (embedding.tolist(), article["scene_number"]),
+                )
+                conn.commit()
+            if (i + 1) % 5 == 0:
+                logger.info(f"Processed {i + 1}/{len(articles)} scenes")
+        except Exception as e:
+            logger.error(f"Failed to process scene {article['scene_number']}: {e}")
+
+    logger.info("Embedding regeneration complete")

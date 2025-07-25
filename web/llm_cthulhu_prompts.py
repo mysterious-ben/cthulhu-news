@@ -535,6 +535,7 @@ _sample_scenes: list[Scene] = [
             "In the biting cold, they prepared, their breaths forming icy sigils in the air — a prelude to an invocation meant to crack reality's thin ice. "
             "The Oracle interpreted these misty runes, her breath quickening as she felt their meaning: a portent of the Great Old One's stirring."
         ),
+        "scene_updates": [],
         "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1.0,
         "scene_older_versions": [],
@@ -582,6 +583,7 @@ _sample_scenes: list[Scene] = [
             "The Enchantress, undeterred, watched as reality itself began to ripple, the air thickening with whispers of alternate dimensions. "
             "Despite this setback, the Ravens remain vigilant, knowing that every failed attempt is just a step closer to the truth."
         ),
+        "scene_updates": [],
         "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1.0,
         "scene_older_versions": [],
@@ -622,6 +624,7 @@ Today's news article: '{s["news_title"]}'. {s["news_summary"]}
 (source: {s["news_source"]})
 
 Truth: '{s["scene_title"] if s["scene_title"] else "..."}'. {s["scene_text"] if s["scene_text"] else "..."}
+Updates: {' '.join(s["scene_updates"]) if s["scene_updates"] else "None."}
 (written by: {s["scene_narrator"]})
 
 Comments:
@@ -631,6 +634,21 @@ Comments:
 -----------
 """
     return s_str
+
+
+def format_scenes_w_extra_info(scenes: list[Scene]) -> str:
+    """Format scenes as text with extra information for LLMs."""
+    return "\n\n".join(_format_scene(s) for s in scenes)
+
+
+def format_scene_truth_w_updates(scene: Scene) -> str:
+    """Format the scene truth with updates from comments."""
+    text = scene["scene_text"]
+    if len(scene["scene_updates"]) > 0:
+        text += "\n\nUpdates:\n"
+        updates = "/n".join(upd for upd in scene["scene_updates"])
+        text += updates
+    return text
 
 
 def _format_scene_parameters(
@@ -656,10 +674,6 @@ Scene #{s["scene_number"]} parameters:
 - Scene text must start with: {starts_with}
 """
     return s_str
-
-
-def format_scenes(scenes: list[Scene]) -> str:
-    return "\n\n".join(_format_scene(s) for s in scenes)
 
 
 scene_role_prompt = "You are a fiction writer who writes captivating suspenseful stories inspired by Cthulhu stories by H P Lovecraft."
@@ -729,9 +743,9 @@ def create_new_scene_prompt(
 ) -> str:
     assert include_sample_scenes_threshold > 0
     assert last_scenes_threshold > 0
-    story_so_far_str = format_scenes(scenes_so_far[-last_scenes_threshold:] + [new_scene])
+    story_so_far_str = format_scenes_w_extra_info(scenes_so_far[-last_scenes_threshold:] + [new_scene])
     if len(scenes_so_far) <= include_sample_scenes_threshold:
-        sample_scenes = format_scenes(_sample_scenes)
+        sample_scenes = format_scenes_w_extra_info(_sample_scenes)
     else:
         sample_scenes = "N/A"
     story_summary_str = "N/A" if len(scenes_so_far) == 0 else scenes_so_far[-1]["story_summary"]
@@ -800,7 +814,7 @@ summary_expected_json_fields = {
 
 
 def create_story_summary_prompt(scenes: list[Scene]) -> str:
-    story_so_far_str = format_scenes(scenes)
+    story_so_far_str = format_scenes_w_extra_info(scenes)
     return _story_summary_prompt.format(story_prompt=story_so_far_str)
 
 
@@ -820,7 +834,10 @@ Make only essential edits to ensure the comment complies with editorial standard
 - Replace all advertisements with: [censored: advertisement]
 - Correct clear typos and grammatical errors, but preserve the comment's style and intent.
 
-Step 2: Evaluate the comment
+Step 2: Formulate as a rumor
+If the comment contains a rumor or anecdote, formulate it as "There is a rumor that ..." (1 sentence), or "N/A" otherwise.
+
+Step 3: Evaluate the comment
 - pertinence: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
 - stylistic_quality: the comment is well-written and stylistically appropriate
 - novelty: the comment contains a new information or perspective not previously mentioned
@@ -832,8 +849,10 @@ Step 2: Evaluate the comment
 - illegal: the comment contains illegal content or references
 - unsafe: the comment contains content that is not safe for publication for adult audiences
 
+
 Return a JSON with the following fields:
 - censored_comment: revised comment here
+- scene_update: comment in the form 'There is a rumor that ...', or N/A
 - pertinence: low, medium, or high
 - stylistic_quality: low, medium, or high
 - novelty: low, medium, or high
@@ -854,12 +873,13 @@ ARTICLE:
 
 
 def create_censorship_prompt(comment: str, scene: Scene) -> str:
-    scene_text = format_scenes([scene])
+    scene_text = format_scene_truth_w_updates(scene)
     return _censorship_prompt.format(comment=comment, article=scene_text)
 
 
 censorship_expected_json_fields = {
     "censored_comment": {"split": False, "force_lower": False},
+    "scene_update": {"split": False, "force_lower": False},
     "pertinence": {"force_lower": True, "votes": ["low", "medium", "high"]},
     "stylistic_quality": {"force_lower": True, "votes": ["low", "medium", "high"]},
     "novelty": {"force_lower": True, "votes": ["low", "medium", "high"]},
@@ -878,6 +898,7 @@ censorship_expected_json_fields = {
 
 class CensoredComment(TypedDict):
     censored_comment: str
+    scene_update: str
     pertinence: str
     stylistic_quality: str
     novelty: str

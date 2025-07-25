@@ -4,7 +4,7 @@ from typing import Any, TypedDict
 
 import numpy as np
 
-EMBEDDING_VECTOR_SIZE = 1536
+EMBEDDING_VECTOR_SIZE = 384
 
 
 def _is_valid_sql_column(s):
@@ -12,7 +12,7 @@ def _is_valid_sql_column(s):
 
 
 def _is_valid_sql_column_type(s):
-    return bool(re.match(r"^[a-zA-Z\s()'{}]+$", s))
+    return bool(re.match(r"^[a-zA-Z\s()'{}0-9\[\]:]+$", s))
 
 
 class NewsArticle(TypedDict):
@@ -27,11 +27,6 @@ class NewsArticle(TypedDict):
     gpt_like_a_hollywood_movie: bool
     gpt_trustworthy: bool
     gpt_economic_impact: str
-
-
-# class WinCounters(TypedDict):
-#     cultists: float
-#     detectives: float
 
 
 WinCounters = dict[str, float]
@@ -99,6 +94,7 @@ class Scene(TypedDict):
     scene_first_sentence: str
     scene_title: str
     scene_text: str
+    scene_updates: list[str]
     scene_vector: np.ndarray
     scene_trustworthiness: float
     scene_older_versions: list[dict]
@@ -120,7 +116,8 @@ sql_table_columns: dict[str, str] = {
     "scene_timestamp": "TIMESTAMPTZ NOT NULL UNIQUE",
     "scene_title": "TEXT NOT NULL",
     "scene_text": "TEXT NOT NULL",
-    "scene_vector": "VECTOR",
+    "scene_updates": "TEXT[] NOT NULL DEFAULT '{}'::TEXT[]",
+    "scene_vector": "VECTOR(384)",
     "story_summary": "TEXT NOT NULL",
     "scene_ends_story": "BOOLEAN NOT NULL",
     "scene_older_versions": "JSONB NOT NULL",
@@ -157,6 +154,7 @@ dict_sql_mapping = {
     "news_published_at": "news_published_at",
     "scene_title": "scene_title",
     "scene_text": "scene_text",
+    "scene_updates": "scene_updates",
     "scene_vector": "scene_vector",
     "story_summary": "story_summary",
     "scene_ends_story": "scene_ends_story",

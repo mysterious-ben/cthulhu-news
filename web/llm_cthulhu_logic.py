@@ -8,6 +8,7 @@ import numpy as np
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
+from sentence_transformers import SentenceTransformer
 
 import web.llm_cthulhu_prompts as prompts
 from shared.llm_utils import get_llm_json_response
@@ -23,8 +24,12 @@ TEXT_MODEL_WRITER_MAX_TOKENS = env.int("TEXT_MODEL_WRITER_MAX_TOKENS")
 TEXT_MODEL_SUMMARIZER_MAX_TOKENS = env.int("TEXT_MODEL_SUMMARIZER_MAX_TOKENS")
 
 CTHULHU_IMAGE_MODEL = "dall-e-3"
+MAX_SCENE_UPDATES = 5
 
 litellm.openai_key = OPENAI_API_KEY
+
+
+_embedding_model = None
 
 
 def _str_to_filename(string: str) -> str:
@@ -84,13 +89,20 @@ def _parse_llm_json_response(
     return formatted_gpt_json
 
 
-def _change_protagonists(protagonists: str) -> str:
-    if protagonists == "detectives":
+# def _change_protagonists(protagonists: str) -> str:
+#     if protagonists == "detectives":
+#         return "cultists"
+#     elif protagonists == "cultists":
+#         return "detectives"
+#     else:
+#         raise ValueError(f"unknown protagonists={protagonists}")
+
+
+def _get_protagonists(scene_number: int) -> str:
+    if scene_number % 2 == 1:
         return "cultists"
-    elif protagonists == "cultists":
-        return "detectives"
     else:
-        raise ValueError(f"unknown protagonists={protagonists}")
+        return "detectives"
 
 
 def get_truth_factor(truth: float, lie: float) -> float:
@@ -174,6 +186,7 @@ def _create_new_scene_parameters(
         "scene_first_sentence": narrator["first_sentence"],
         "scene_title": "",
         "scene_text": "",
+        "scene_updates": [],
         "scene_vector": np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32),
         "scene_trustworthiness": 1,
         "scene_older_versions": [],
@@ -203,24 +216,60 @@ def sum_scene_counters(
     return total_counters
 
 
-def generate_embedding_vector(text: str) -> np.ndarray:
-    """Generate am embedding vector for the given text."""
+def get_embedding_model() -> SentenceTransformer:
+    """Get or load the embedding model."""
+    global _embedding_model
+    if _embedding_model is None:
+        logger.info("Loading sentence-transformers model")
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+        logger.info("Embedding model loaded")
+    return _embedding_model
 
-    # TODO: use a proper embedding model
-    print(text)
-    return np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32)  # Placeholder for an embedding vector
+
+def generate_embedding_vector(text: str) -> np.ndarray:
+    """Generate embedding vector for the given text."""
+    text = text.strip()
+    if len(text) == 0:
+        logger.warning("Empty text provided for embedding generation")
+        return np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32)
+    if len(text) > 1000:
+        logger.warning(f"Text for embedding is long length={len(text)}")
+
+    model = get_embedding_model()
+    embedding = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
+    embedding = embedding.astype(np.float32)
+    return embedding
 
 
 def find_story_context(
-    text: str,
-    scenes: list[Scene],
+    text: str, scenes: list[Scene], n_top: int = 3, min_similarity: float = 0.1
 ) -> list[str]:
-    """Find the relevant context in the story for the given text (RAG)."""
+    """Find relevant story context using simple embedding similarity."""
+    if not text or not text.strip() or not scenes:
+        return []
 
-    # TODO: implement a more sophisticated context search
-    print(text)
-    print(len(scenes))
-    return []
+    query_embedding = generate_embedding_vector(text)
+    if np.allclose(query_embedding, 0):
+        return []
+
+    # Calculate similarity with each scene
+    similarities = []
+    for scene in scenes:
+        scene_embedding = scene["scene_vector"]
+        if not np.allclose(scene_embedding, 0):
+            similarity = np.dot(query_embedding, scene_embedding)
+            similarities.append((similarity, scene))
+
+    # Sort by similarity and take top 3
+    similarities.sort(key=lambda x: x[0], reverse=True)
+
+    results = []
+    for similarity, scene in similarities[:n_top]:
+        if similarity > min_similarity:
+            scene_text = scene["scene_text"]
+            results.append(f"Scene {scene['scene_number']}: {scene_text}")
+
+    return results
 
 
 def generate_cthulhu_news(
@@ -239,18 +288,15 @@ def generate_cthulhu_news(
     scenes_so_far = scenes_so_far.copy()
     n_initial_scenes = len(scenes_so_far)
 
-    scene_number = len(scenes_so_far) + 1
-
     curr_win_counters = sum_scene_counters([a["scene_counters"] for a in scenes_so_far])
 
     for news_article, timestamp in zip(news_articles, timestamps, strict=False):
-        if len(scenes_so_far) == 0:
-            protagonists = "cultists"
-        elif scenes_so_far[-1]["scene_ends_story"]:
+        if scenes_so_far[-1]["scene_ends_story"]:
             logger.info("the story has already ended (skip creating a new scene)...")
             return []
-        else:
-            protagonists = _change_protagonists(scenes_so_far[-1]["scene_protagonists"])
+
+        scene_number = len(scenes_so_far) + 1
+        protagonists = _get_protagonists(scene_number)
 
         scene = _create_new_scene_parameters(
             news_article=news_article,
@@ -336,7 +382,6 @@ def generate_cthulhu_news(
             logger.info(f"winner={scene['story_winner']}")
             break
 
-        scene_number += 1
         time.sleep(0.5)
 
     logger.info(
@@ -422,14 +467,20 @@ def censor_comment(
         f"pertinence={c_json['pertinence']} stylistic_quality={c_json['stylistic_quality']} "
         f"novelty={c_json['novelty']} unsafe={c_json['unsafe']}"
     )
+    upd = c_json["scene_update"].strip(" \"'")
+    if not upd.startswith("There is a rumor that"):
+        upd = ""
     preselected = (
-        (c_json["pertinence"] == "high" or c_json["pertinence"] == "medium")
+        (len(scene["scene_updates"]) < MAX_SCENE_UPDATES)
+        and (len(upd) > 0)
+        and (c_json["pertinence"] == "high" or c_json["pertinence"] == "medium")
         and (c_json["stylistic_quality"] == "high" or c_json["stylistic_quality"] == "medium")
         and (c_json["novelty"] == "high" or c_json["novelty"] == "medium")
         and (c_json["unsafe"] == "no")
     )
     censored_comment: prompts.CensoredComment = {
         "censored_comment": c_json["censored_comment"],
+        "scene_update": upd,
         "pertinence": c_json["pertinence"],
         "stylistic_quality": c_json["stylistic_quality"],
         "novelty": c_json["novelty"],
@@ -443,3 +494,7 @@ def censor_comment(
         "preselected": preselected,
     }
     return censored_comment
+
+
+def accept_or_refuse_comment(censored_comment: prompts.CensoredComment, scene: Scene) -> bool:
+    return censored_comment["preselected"] and (len(scene["scene_updates"]) < MAX_SCENE_UPDATES)

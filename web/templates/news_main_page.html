@@ -108,6 +108,16 @@
                     </div>
                     <h2 class="truth-title">{{ article['scene_title'] }}</h2>
                     <p class="truth-text drop-cap-red">{{ article['scene_text'] }}</p>
+                    {% if article['scene_updates'] %}
+                    <div class="scene-updates">
+                        <!-- <h3 class="updates-title">Updates:</h3> -->
+                        <ul class="updates-list">
+                            {% for update in article['scene_updates'] %}
+                            <li class="update-item">{{ update }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
                     <div class="news-source">
                         (reported by {{ article['scene_narrator'] }} on {{ article['published_at'][:10] }})
                     </div>
