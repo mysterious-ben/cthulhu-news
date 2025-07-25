@@ -1,4 +1,11 @@
 repos:
+  - repo: local
+    hooks:
+      - id: uv-freeze
+        name: uv-freeze
+        language: system
+        entry: make uv-freeze
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0
     hooks:
