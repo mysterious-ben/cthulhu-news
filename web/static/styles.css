@@ -750,12 +750,13 @@ input[type=text]::placeholder {
 }
 
 .comments-box ul li::before {
-    content: "⚫";
+    /* content: "⚫"; */
+    content: "👁";
     top: 0.65rem;
     position: absolute;
     left: -12px;
     font-size: 1.2rem;
-    filter: grayscale(100%) brightness(0.8) contrast(0.7);
+    filter: grayscale(100%) brightness(0.0) contrast(0.0);
     text-shadow: 0 0 2px var(--link-color);
 }
 
