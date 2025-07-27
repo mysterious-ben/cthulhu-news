@@ -221,6 +221,7 @@ async def submit_comment(
         dbu.add_cthulhu_scene_update(
             scene_number=scene_number, scene_update=censored_comment["scene_update"]
         )
+        # TODO: also recompute the scene summary and embedding vector
         logger.info(f"added story update for scene_number={scene_number}")
 
     cthulhu_articles = _get_cthulhu_articles_cached(scene_number=scene_number)

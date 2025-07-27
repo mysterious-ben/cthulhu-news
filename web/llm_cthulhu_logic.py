@@ -350,7 +350,7 @@ def generate_cthulhu_news(
             response_json=response_json,
             raise_on_error=True,
         )
-        scene["scene_text"] = factcheck_json["story"]
+        scene["scene_text"] = factcheck_json["revised_story"]
 
         summary_prompt = prompts.create_story_summary_prompt(scenes=scenes_so_far + [scene])
         response_json = get_llm_json_response(
@@ -371,7 +371,8 @@ def generate_cthulhu_news(
 
         for k, v in scene.items():
             assert v is not None, f"scene parameter '{k}' is None"
-            assert v != "", f"scene parameter '{k}' = ''"
+            if isinstance(v, str):
+                assert v != "", f"scene parameter '{k}' = ''"
 
         for k, _ in curr_win_counters.items():
             curr_win_counters[k] += scene["scene_counters"][k]

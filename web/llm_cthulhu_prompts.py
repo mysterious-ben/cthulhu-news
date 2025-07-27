@@ -766,8 +766,7 @@ _factcheck_story_prompt = """\
 Make minimal edits to the story below, to ensure that the story is consistent with the facts below. Preserve the style and meaning of the story.
 
 Return a JSON with the following fields:
-- story: the edited story
-- edits: a list of edits made to the story
+- revised_story: the edited story
 
 STORY:
 {story}
@@ -787,8 +786,8 @@ def create_factcheck_story_prompt(text: str, facts: list[str]) -> str:
 
 
 factcheck_story_expected_json_fields = {
-    "story": {"split": False, "force_lower": False},
-    "edits": {"split": False, "force_lower": False},
+    "revised_story": {"split": False, "force_lower": False},
+    # "edits": {"split": True, "force_lower": False},
 }
 
 
