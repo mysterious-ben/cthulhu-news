@@ -256,7 +256,7 @@ def find_story_context(
     similarities = []
     for scene in scenes:
         scene_embedding = scene["scene_vector"]
-        if not np.allclose(scene_embedding, 0):
+        if (scene_embedding is not None) and (not np.allclose(scene_embedding, 0)):
             similarity = np.dot(query_embedding, scene_embedding)
             similarities.append((similarity, scene))
 

@@ -106,8 +106,8 @@
                             data-src="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-default.jpg"
                             alt="News Image" class="news-image">
                     </div>
-                    <h2 class="truth-title">{{ article['scene_title'] }}</h2>
-                    <p class="truth-text drop-cap-red">{{ article['scene_text'] }}</p>
+                    <h2 class="{% if article['scene_protagonist'] == 'cultists' %}truth-title-red{% else %}truth-title-blue{% endif %} truth-title">{{ article['scene_title'] }}</h2>
+                    <p class="truth-text {% if article['scene_protagonist'] == 'cultists' %}drop-cap-red{% else %}drop-cap-blue{% endif %} drop-cap">{{ article['scene_text'] }}</p>
                     {% if article['scene_updates'] %}
                     <div class="scene-updates">
                         <!-- <h3 class="updates-title">Updates:</h3> -->
