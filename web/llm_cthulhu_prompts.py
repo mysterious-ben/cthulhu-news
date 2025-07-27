@@ -827,15 +827,18 @@ Evaluate if the reader's comment is appropriate for publication in our newspaper
 
 Step 1: Apply minimal, necessary edits
 Make only essential edits to ensure the comment complies with editorial standards, without altering its meaning or tone:
-- Replace all slurs and hate speech with: [censored: rude language]
-- Replace all names of individuals with: [censored: name]
-- Replace all names of the Ancient Ones: [censored: ❦]
-- Replace all external URLs with: [censored: external source]
-- Replace all advertisements with: [censored: advertisement]
+- Replace all slurs and hate speech with: [profanity]
+- Replace all names and surnames of individuals with: [name]
+- Keep nicknames and aliases as is
+- Replace all names of the Ancient Ones: [❦]
+- Replace all external URLs with: [external source]
+- Replace all advertisements with: [advertisement]
+- Replace meaningless incomprehensible sequences of characters with: [❦]
 - Correct clear typos and grammatical errors, but preserve the comment's style and intent.
 
 Step 2: Formulate as a rumor
 If the comment contains a rumor or anecdote, formulate it as "There is a rumor that ..." (1 sentence), or "N/A" otherwise.
+Mimic the style of the article.
 
 Step 3: Evaluate the comment
 - pertinence: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
