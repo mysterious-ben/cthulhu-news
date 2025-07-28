@@ -1,4 +1,4 @@
-FROM python:3.10.12-slim-buster
+FROM python:3.12-slim-bookworm
 
 RUN \
   apt-get update && apt-get install -y \
@@ -9,11 +9,14 @@ RUN \
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 WORKDIR /app
-COPY . /app
+
+COPY web/requirements.txt /app/web/requirements.txt
 
 RUN \
-  pip install pip -U \
-  pip install --no-cache-dir -r requirements.txt
+  pip install pip -U && \
+  pip install --no-cache-dir -r web/requirements.txt
+
+COPY . /app
 
 STOPSIGNAL SIGINT
 

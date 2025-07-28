@@ -1,20 +1,27 @@
+#########################
+### DOWNLOAD NEWS ETL ###
+#########################
+
 import json
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Optional
+from typing import Literal
 
+# import click
 import httpx
 import newspaper
 import nltk
 import pymongo
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from loguru import logger
 from logutil import init_loguru
-from openai import OpenAI
 from pymongo.errors import BulkWriteError
+
+from db.llm_summary import add_gpt_info
+from prefect import flow, task
+from prefect.schedules import Interval
+from shared.paths import DB_ETL_LOG_PATH
 
 load_dotenv(find_dotenv())
 
@@ -33,23 +40,19 @@ MONGO_NEWS_COLLECTION = "gnews"
 NEWS_QUERIES = ["finance", "energy", "weather", "murders", "funny"]
 NEWS_QUERY_EVERY_X_SECONDS = env.int("NEWS_QUERY_EVERY_X_SECONDS")
 NEWS_QUERY_WINDOW_EXTENSION_SECONDS = env.int("NEWS_QUERY_WINDOW_EXTENSION_SECONDS")
-OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-OPENAI_GPT_MODEL = env.str("OPENAI_GPT_SUMMARY_MODEL")
-OPENAI_GPT_MAX_TOKENS = env.int("OPENAI_GPT_SUMMARY_MAX_TOKENS")
 
-
-init_loguru(file_path="logs/log.log")
-
+init_loguru(file_path=str(DB_ETL_LOG_PATH))
 logger.info("downloadeding nltk punkt...")
 # nltk.download("punkt", download_dir=NLTK_DOWNLOADS_DIR, quiet=True, raise_on_error=True)
 nltk.download("punkt", raise_on_error=True)
+nltk.download("punkt_tab", raise_on_error=True)
 logger.info("downloaded nltk punkt")
 
 
 def get_news_links_gnews(
     query: str,
-    from_: Optional[datetime],
-    to_: Optional[datetime],
+    from_: datetime | None,
+    to_: datetime | None,
     lang: str,
     limit: int,
     sortby: Literal["publishedAt", "relevance"],
@@ -132,108 +135,6 @@ def load_news_articles(news_listings: list[dict]) -> None:
     logger.info(f"downloaded and parsed full news articles count={len(news_listings)}")
 
 
-def _parse_gpt_json_response(expected_fields: dict, response_json: dict) -> dict:
-    formatted_gpt_json = {}
-    for field, conditions in expected_fields.items():
-        value_is_correct = True
-        if field in response_json:
-            value: str = response_json[field]
-            value = value.strip()
-            if conditions["force_lower"]:
-                value = value.lower()
-            if conditions["split"]:
-                value = [v.strip() for v in value.split(",")]  # type: ignore
-                if conditions["choices"]:
-                    value_is_correct = set(value).issubset(set(conditions["choices"]))  # type: ignore
-            else:
-                if conditions["choices"]:
-                    value_is_correct = value in set(conditions["choices"])  # type: ignore
-        if value_is_correct:
-            formatted_gpt_json[field] = value
-        else:
-            logger.warning(f"incorrect gpt value field={field} value={value}")
-    return formatted_gpt_json
-
-
-def add_gpt_info(news_listings: list[dict]) -> None:
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    gpt_role = "You're a news editor"
-    gpt_query = (
-        "Return a json file based on the news article below. "
-        "Ignore ads and debugging messages related to the web. "
-        "JSON fields: "
-        "'summary' = a one-paragraph summary of the news article; "
-        "'keywords' = 5 to 10 keywords separated by a comma; "
-        "'sectors' = most relevant sectors separated by a comma; "
-        "'mood' = positive, negative, neutral, mixed, or unclear; "
-        "'breaking_news' = yes, no, or unclear; "
-        "'like_a_hollywood_movie' = yes, no, or unclear; "
-        "'trustworthy' = yes, no, or unclear; "
-        "'economic_impact' = high, medium, low, or unclear. "
-        "The news article:\n\n{text}"
-    )
-    expected_fields = {
-        "summary": {"choices": [], "split": False, "force_lower": False},
-        "keywords": {"choices": [], "split": True, "force_lower": False},
-        "sectors": {"choices": [], "split": True, "force_lower": True},
-        "mood": {
-            "choices": ["positive", "negative", "neutral", "mixed", "unclear"],
-            "split": False,
-            "force_lower": True,
-        },
-        "breaking_news": {
-            "choices": ["yes", "no", "unclear"],
-            "split": False,
-            "force_lower": True,
-        },
-        "like_a_hollywood_movie": {
-            "choices": ["yes", "no", "unclear"],
-            "split": False,
-            "force_lower": True,
-        },
-        "trustworthy": {
-            "choices": ["yes", "no", "unclear"],
-            "split": False,
-            "force_lower": True,
-        },
-        "economic_impact": {
-            "choices": ["high", "medium", "low", "unclear"],
-            "split": False,
-            "force_lower": True,
-        },
-    }
-
-    for listing in news_listings:
-        if "full_text" in listing:
-            text = listing["full_text"]
-            gpt_messages = [
-                {"role": "system", "content": gpt_role},
-                {"role": "user", "content": gpt_query.format(text=text)},
-            ]
-            try:
-                openai_response = client.chat.completions.create(
-                    model=OPENAI_GPT_MODEL,
-                    messages=gpt_messages,  # type: ignore
-                    stream=False,
-                    max_tokens=OPENAI_GPT_MAX_TOKENS,
-                    n=1,
-                    stop=None,
-                    temperature=0.5,
-                    response_format={"type": "json_object"},
-                )
-                response_json = json.loads(openai_response.choices[0].message.content)
-                formatted_response_json = _parse_gpt_json_response(expected_fields, response_json)
-                listing.update({f"gpt_{k}": v for k, v in formatted_response_json.items()})
-                logger.debug(f"added gpt generated fields title='{listing['title']}'")
-            except Exception as e:
-                logger.exception(e)
-        else:
-            logger.warning(
-                f"no key=full_text to generate gpt fields (skip) title='{listing['title']}'"
-            )
-    logger.info(f"added gpt generated fields count={len(news_listings)}")
-
-
 def save_to_mongo_db(news_articles: list[dict]) -> None:
     client: pymongo.MongoClient = pymongo.MongoClient(MONGODB_URI)
     db = client.get_database(MONGO_NEWS_DB)
@@ -248,9 +149,11 @@ def save_to_mongo_db(news_articles: list[dict]) -> None:
 
 def load_news(
     query: str,
-    from_: Optional[datetime],
-    to_: Optional[datetime],
-):
+    from_: datetime | None,
+    to_: datetime | None,
+) -> None:
+    """Load a news article, add a GPT summary and save to the local db"""
+
     news_listings = get_news_links_gnews(
         query=query,
         from_=from_,
@@ -267,31 +170,48 @@ def load_news(
         logger.info("no news articles to parse and save (skip)")
 
 
-def load_all_recent_news():
+@task(
+    name="load_news_for_query",
+    task_run_name="load_news_for_query-{query}",
+    retries=2,
+    retry_delay_seconds=30,
+)
+def load_news_task(query, from_, to_=None):
+    """Task to load news for a specific query"""
+    logger.info(f"start task to load news for query: {query}")
+    return load_news(query, from_=from_, to_=to_)
+
+
+@flow(name="load_all_recent_news", log_prints=True)
+def load_all_recent_news_flow():
+    """Load all recent news articles, add a GPT summary and save to the local db"""
+
     time_now = datetime.now(tz=timezone.utc)
     time_from = time_now - timedelta(
         seconds=NEWS_QUERY_EVERY_X_SECONDS + NEWS_QUERY_WINDOW_EXTENSION_SECONDS
     )
     for q in NEWS_QUERIES:
-        load_news(q, from_=time_from, to_=None)
-        time.sleep(1)
+        load_news_task(q, from_=time_from, to_=None)
+
     logger.info("loaded, parsed and saved all recent news articles")
 
 
-def start_news_etl():
-    logger.info("starting the scheduler...")
-    scheduler = BlockingScheduler()
-    start_time = datetime.now(tz=timezone.utc) + timedelta(seconds=5)
-    scheduler.add_job(
-        load_all_recent_news,
-        IntervalTrigger(seconds=NEWS_QUERY_EVERY_X_SECONDS),
-        name="download_news",
-        replace_existing=True,
-        next_run_time=start_time,
+# @click.command("serve")
+def start_news_etl_with_serve():
+    """Start the normal news ETL using Prefect serve (blocking)"""
+
+    logger.info("serving the normal news ETL...")
+    schedule = Interval(
+        timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
+        anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5),
     )
-    scheduler.start()
-    logger.info("started the scheduler...")
+    load_all_recent_news_flow.serve(
+        name="news-etl-deployment",
+        schedule=schedule,
+        tags=["news", "etl"],
+        description="Load normal news articles periodically",
+    )
 
 
 if __name__ == "__main__":
-    start_news_etl()
+    start_news_etl_with_serve()

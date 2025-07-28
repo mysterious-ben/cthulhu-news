@@ -1,99 +1,16 @@
-version: '3.8'
-
 services:
-  web-page:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    image: web-page:latest
-    container_name: cthulhu-web-page
-    init: true
-    ports:
-      - "8000:8000"
-    expose:
-      - 8000
-    volumes:
-      - ./web/logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_HOST=mongo
-      - UVICON_HOST=0.0.0.0
-    env_file:
-      - .env
-    entrypoint: ["uvicorn"]
-    command: ["main:app", "--host=0.0.0.0", "--port=8000"]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
-
-  web-etl:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    image: web-etl:latest
-    container_name: cthulhu-web-etl
-    init: true
-    volumes:
-      - ./web/logs:/app/logs
-      - ./web/data:/app/data
-      - ./web/static:/app/static
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_HOST=mongo
-    env_file:
-      - .env
-    entrypoint: ["python"]
-    command: ["-m", "main"]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
-
-  db-etl:
-    build:
-      context: ./db
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    image: db-etl:latest
-    container_name: cthulhu-db-etl
-    init: true
-    volumes:
-      - ./db/logs:/app/logs
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_HOST=mongo
-    env_file:
-      - .env
-    entrypoint: ["python"]
-    command: ["-m", "main"]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
-
   mongo:
     restart: unless-stopped
-    image: mongo:latest
+    image: mongo:8
     container_name: cthulhu-mongo
     ports:
-      - 27017:27017
+      - "${MONGO_PORT:-27017}:27017"
     expose:
       - 27017
     volumes:
-      - ./db/data/mongo_storage:/data/db
-      - ./db/logs/mongo_log:/var/log/mongodb
-      - ./db/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+      - ./mongo/data:/data/db
+      - ./mongo/logs/mongo_log:/var/log/mongodb
+      - ./mongo/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
     environment:
       - PUID=1000
       - PGID=1000
@@ -105,31 +22,183 @@ services:
       options:
         max-size: "50m"
         max-file: "2"
-
-  qdrant:
-    restart: unless-stopped
-    image: qdrant/qdrant:latest
-    container_name: cthulhu-qdrant
+  
+  mongo-express:
+    image: mongo-express
+    container_name: cthulhu-mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017
+    env_file:
+      - .env
     ports:
-      - 6333:6333
-      - 6334:6334
-    expose:
-      - 6333
-      - 6334
+      - "8081:8081"
+    depends_on:
+      - mongo
+
+  # qdrant:
+  #   restart: unless-stopped
+  #   image: qdrant/qdrant:latest
+  #   container_name: cthulhu-qdrant
+  #   ports:
+  #     - 6333:6333
+  #     - 6334:6334
+  #   expose:
+  #     - 6333
+  #     - 6334
+  #   volumes:
+  #     - ./db/data/qdrant_storage:/qdrant/storage
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - QDRANT__LOG_LEVEL=INFO
+  #     - QDRANT__SERVICE__HTTP_PORT=6333
+  #   env_file:
+  #     - .env
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "50m"
+  #       max-file: "2"
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: cthulhu-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: postgres
+      TZ: UTC
     volumes:
-      - ./db/data/qdrant_storage:/qdrant/storage
+      - ./pg/data:/var/lib/postgresql/data
+      - ./pg/pg-scripts:/docker-entrypoint-initdb.d
+      - ./pg/pg-config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./pg/logs:/var/log/postgresql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    expose:
+      - 5432
+    restart: always
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    container_name: prefect-server
+    command: prefect server start
+    environment:
+      - PREFECT_UI_URL=http://localhost:4200/api
+      - PREFECT_API_URL=http://localhost:4200/api
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_SERVER_DATABASE_CONNECTION_URL=postgresql+asyncpg://postgres:postgres_password@postgres:5432/postgres
+    env_file:
+      - .env
+    ports:
+      - "4200:4200"
+    restart: unless-stopped
+    volumes:
+      - ./prefect/data:/root/.prefect
+    depends_on:
+      - postgres
+
+  prefect-worker:
+    image: prefecthq/prefect:3-latest
+    container_name: prefect-worker
+    command: prefect worker start --pool default-agent-pool
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+    restart: unless-stopped
+    depends_on:
+      - prefect-server
+  
+  db-etl:
+    build:
+      context: .
+      dockerfile: ./db/Dockerfile
+    restart: unless-stopped
+    image: db-etl:latest
+    container_name: cthulhu-db-etl
+    init: true
+    volumes:
+      - ./db/data:/app/data
+      - ./logs:/app/logs
     environment:
       - PUID=1000
       - PGID=1000
-      - QDRANT__LOG_LEVEL=INFO
-      - QDRANT__SERVICE__HTTP_PORT=6333
+      - MONGO_HOST=mongo
+      - PREFECT_API_URL=http://prefect-server:4200/api
     env_file:
       - .env
+    entrypoint: ["python"]
+    command: ["-m", "db.etl"]
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "2"
+    depends_on:
+        - prefect-server
+        - prefect-worker
+        - mongo
+
+  web-etl:
+    build:
+      context: .
+      dockerfile: ./web/Dockerfile
+    restart: unless-stopped
+    image: web-etl:latest
+    container_name: cthulhu-web-etl
+    init: true
+    volumes:
+      - ./logs:/app/logs
+      - ./web/data:/app/web/data
+      - ./web/static:/app/web/static
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MONGO_HOST=mongo
+      - POSTGRES_HOST=postgres
+      - PREFECT_API_URL=http://prefect-server:4200/api
+    env_file:
+      - .env
+    entrypoint: ["python"]
+    command: ["-m", "web.etl"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+  web-page:
+    build:
+      context: .
+      dockerfile: ./web/Dockerfile
+    restart: unless-stopped
+    image: web-page:latest
+    container_name: cthulhu-web-page
+    init: true
+    ports:
+      - "8000:8000"
+    expose:
+      - 8000
+    volumes:
+      - ./logs:/app/logs
+      - ./web/data:/app/web/data
+      - ./web/static:/app/web/static
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MONGO_HOST=mongo
+      - POSTGRES_HOST=postgres
+      - UVICON_HOST=0.0.0.0
+    env_file:
+      - .env
+    entrypoint: ["uvicorn"]
+    command: ["web.webapp:app", "--host=0.0.0.0", "--port=8000"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
 
 networks:
   default:

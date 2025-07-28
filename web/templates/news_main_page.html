@@ -1,0 +1,150 @@
+<!-- templates/news_page.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cthulhu News</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/images/cthulhu.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/htmx.org@1.9.9/dist/htmx.min.js"></script>
+    <script src="/static/js/news_main_page.js"></script>
+    <script src="/static/js/news_article.js"></script>
+    <script src="/static/js/counter_effects.js"></script>
+</head>
+
+<body>
+    <div class="newspaper-container">
+        <header class="newspaper-header">
+            <div class="masthead-border"></div>
+            <h1 class="website-name">Cthulhu News</h1>
+            <div class="newspaper-subtitle">Uncovering the Truth Behind the Veil</div>
+            <div class="masthead-border"></div>
+            
+            <!-- Counter Display -->
+            <div class="counter-display">
+                <div class="counter-section cultist-counter">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div class="counter-title">The Final Tide</div>
+                        <div class="circular-gauge" 
+                             data-value="{{ counters['cultists']['counter'] }}" 
+                             data-limit="{{ counters['cultists']['limit_value'] }}"
+                             data-faction="cultist">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-background" cx="60" cy="60" r="46"/>
+                                <circle class="gauge-border cultist-border" cx="60" cy="60" r="50"/>
+                                <circle class="gauge-border cultist-border" cx="60" cy="60" r="42"/>
+                                <circle class="gauge-fill cultist-fill" cx="60" cy="60" r="46"/>
+                                <text class="gauge-center-text cultist-text" x="60" y="60" text-anchor="middle" dominant-baseline="central">
+                                    {{ "%.1f"|format(counters['cultists']['counter']) }}
+                                </text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="counter-divider">❦</div>
+                
+                <div class="counter-section detective-counter">
+                    <div style="display: flex; align-items: center; gap: 20px; flex-direction: row-reverse;">
+                        <div class="counter-title">The Ravens</div>
+                        <div class="circular-gauge" 
+                             data-value="{{ counters['detectives']['counter'] }}" 
+                             data-limit="{{ counters['detectives']['limit_value'] }}"
+                             data-faction="detective">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-background" cx="60" cy="60" r="46"/>
+                                <circle class="gauge-border detective-border" cx="60" cy="60" r="50"/>
+                                <circle class="gauge-border detective-border" cx="60" cy="60" r="42"/>
+                                <circle class="gauge-fill detective-fill" cx="60" cy="60" r="46"/>
+                                <text class="gauge-center-text detective-text" x="60" y="60" text-anchor="middle" dominant-baseline="central">
+                                    {{ "%.1f"|format(counters['detectives']['counter']) }}
+                                </text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <main class="news-area">
+            {% for article in news_articles %}
+            <article class="news-box newspaper-article" id="article-{{ article['scene_number'] }}">
+                <!-- Counter change indicators as vertical bars -->
+                <div class="counter-bar cultist-bar" data-change="{{ article['scene_counters']['cultists'] }}">
+                    <div class="bar-fill cultist-bar-fill"></div>
+                    <div class="bar-tooltip">
+                        {% if article['scene_counters']['cultists'] > 0 %}+{% endif %}{{ article['scene_counters']['cultists'] | round(1) }}
+                    </div>
+                </div>
+                <div class="counter-bar detective-bar" data-change="{{ article['scene_counters']['detectives'] }}">
+                    <div class="bar-fill detective-bar-fill"></div>
+                    <div class="bar-tooltip">
+                        {% if article['scene_counters']['detectives'] > 0 %}+{% endif %}{{ article['scene_counters']['detectives'] | round(1) }}
+                    </div>
+                </div>
+                
+                <div class="article-section mundane-news">
+                    <h2 class="main-title">{{ article['news_title'] }}</h2>
+                    <p class="news-summary drop-cap">{{ article['news_summary'] }}</p>
+                    <div class="news-source">
+                        (reported by <a href="{{ article['news_url'] }}" target="_blank">{{ article['news_source'] }}</a> on {{
+                        article['published_at'][:10] }})
+                    </div>
+                </div>
+                
+                <div class="facade-divider">
+                    <h2 class="facade-sign">But this is just the facade</h2>
+                </div>
+                
+                <div class="article-section truth-section">
+                    <div class="news-image-container">
+                        <img data-srcset="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-small.jpg 500w,
+                            /static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-medium.jpg 1000w,
+                            /static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-large.jpg 1500w"
+                            data-src="/static/cthulhu-images/{{ article['image_meta']['cthulhu_image_name'] }}-default.jpg"
+                            alt="News Image" class="news-image">
+                    </div>
+                    <h2 class="{% if article['scene_protagonists'] == 'cultists' %}truth-title-red{% else %}truth-title-blue{% endif %} truth-title">{{ article['scene_title'] }}</h2>
+                    <p class="truth-text {% if article['scene_protagonists'] == 'cultists' %}drop-cap-red{% else %}drop-cap-blue{% endif %} drop-cap">{{ article['scene_text'] }}</p>
+                    {% if article['scene_updates'] %}
+                    <div class="scene-updates">
+                        <!-- <h3 class="updates-title">Updates:</h3> -->
+                        <ul class="updates-list">
+                            {% for update in article['scene_updates'] %}
+                            <li class="update-item">{{ update }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    <div class="news-source">
+                        (reported by {{ article['scene_narrator'] }} on {{ article['published_at'][:10] }})
+                    </div>
+                </div>
+
+                <div class="interactions-section">
+                    <div class="news-reactions">
+                        {% include 'reactions.html' %}
+                    </div>
+
+                    <div class="comments-box">
+                        <section id="comments-{{ article['scene_number'] }}">
+                            {% include 'comments.html' %}
+                        </section>
+                    </div>
+                </div>
+
+            <!-- <div style="text-align:center">
+                <button class="button" onclick="location.href='/article/{{ article['scene_number'] }}'">
+                    Go to the article →
+                </button>
+            </div> -->
+
+            </article>
+            {% endfor %}
+        </main>
+    </div>
+</body>
+
+</html>

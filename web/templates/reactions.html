@@ -1,0 +1,15 @@
+<!-- templates/reactions.html -->
+
+{% for reaction, reaction_count in article['reactions']['votes'].items() %}
+{% if reaction in ['truth', 'lie'] %}
+<button class="button button-react" data-react-btn="{{ article['scene_number'] }}"
+    hx-target="#{{ reaction }}-count-{{ article['scene_number'] }}" hx-swap="innerHTML"
+    hx-post="/react/{{ reaction }}/{{ article['scene_number'] }}"
+    onclick="news_article.reactionClick(`{{ article['scene_number'] }}`)">
+    {{ reaction.title() }}:
+    <span id="{{ reaction }}-count-{{ article['scene_number'] }}">
+        {{ reaction_count }}
+    </span>
+</button>
+{% endif %}
+{% endfor %}

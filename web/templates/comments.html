@@ -1,10 +1,42 @@
 <!-- templates/comments.html -->
 
-<div class="others-say">Others are saying...</div>
-<ul style="padding-left: 0;">
+<ul>
+    {% if article['reactions']['comments'] %}
     {% for comment in article['reactions']['comments'] %}
-    <li class="comment-text">
-        {{ comment.comment }} <div class="comment-source">(reported by {{ comment.author }})</div>
+    <li{% if comment['accepted'] %} class="comment-accepted"{% endif %}>
+        <div class="comment-content">{{ comment['comment'] }} <span class="comment-source">(reported by {{
+                comment['author'] }} on {{
+                comment['created_at'][:10] }})</span></div>
     </li>
     {% endfor %}
 </ul>
+{% else %}
+<div class="no-comments">No witnesses yet... Do you know anything about it?</div>
+{% endif %}
+
+<br />
+
+{% if comment_just_submitted %}
+<div class="thanks-message" id="thanks-message-{{ article['scene_number'] }}">
+    (your voice have been heard)
+</div>
+{% else %}
+<form data-comment-form="{{ article['scene_number'] }}" hx-post="/submit_comment/{{ article['scene_number'] }}"
+    hx-swap="outerHTML" hx-target="#comments-{{ article['scene_number'] }}"
+    onsubmit="return news_article.commentSubmit(`{{ article['scene_number'] }}`);">
+    <textarea name="comment" rows="3" placeholder="Your rumor about this event..." required></textarea><br />
+    <input type="text" name="author" placeholder="Your (fake) name" required style="float: right;"><br />
+    <div style="clear: both; text-align: center;">
+        <button class="button-comment" type="submit">
+            <span class="button-text">Add a new rumour</span>
+            <span class="htmx-indicator loading-spinner">
+                under review...
+            </span>
+        </button>
+    </div>
+</form>
+
+<div class="thanks-message" id="thanks-message-{{ article['scene_number'] }}" style="display:none;">
+    (your voice have been heard)
+</div>
+{% endif %}
