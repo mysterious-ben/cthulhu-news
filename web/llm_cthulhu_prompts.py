@@ -841,6 +841,7 @@ Mimic the style of the article.
 
 Step 3: Evaluate the comment
 - pertinence: the comment contains a rich story, an anecdote, or a rumor related to the events of the article
+- premonition: the comment contains a premonition or a prophecy about the future events related to the article
 - stylistic_quality: the comment is well-written and stylistically appropriate
 - novelty: the comment contains a new information or perspective not previously mentioned
 - contradicting: the comment clearly contradicts the article or other comments
@@ -856,6 +857,7 @@ Return a JSON with the following fields:
 - censored_comment: revised comment here
 - scene_update: comment in the form 'There is a rumor that ...', or N/A
 - pertinence: low, medium, or high
+- premonition: yes or no
 - stylistic_quality: low, medium, or high
 - novelty: low, medium, or high
 - contradicting: yes or no
@@ -883,6 +885,7 @@ censorship_expected_json_fields = {
     "censored_comment": {"split": False, "force_lower": False},
     "scene_update": {"split": False, "force_lower": False},
     "pertinence": {"force_lower": True, "votes": ["low", "medium", "high"]},
+    "premonition": {"force_lower": True, "votes": ["yes", "no"]},
     "stylistic_quality": {"force_lower": True, "votes": ["low", "medium", "high"]},
     "novelty": {"force_lower": True, "votes": ["low", "medium", "high"]},
     "contradicting": {"force_lower": True, "votes": ["yes", "no"]},
