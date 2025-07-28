@@ -7,6 +7,7 @@ import litellm
 import numpy as np
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
+from litellm.exceptions import ContentPolicyViolationError
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
@@ -392,6 +393,18 @@ def generate_cthulhu_news(
     return new_scenes
 
 
+def _call_image_generation(prompt: str):
+    """Helper to call litellm.image_generation with standard parameters."""
+    return litellm.image_generation(
+        model=CTHULHU_IMAGE_MODEL,
+        prompt=prompt,
+        size="1024x1024",
+        quality="standard",
+        n=1,
+        response_format="b64_json",
+    )
+
+
 def add_cthulhu_images(scenes: list[Scene]) -> None:
     """Generate images for the Cthulhu scenes."""
 
@@ -400,30 +413,29 @@ def add_cthulhu_images(scenes: list[Scene]) -> None:
             "Create a dark retro surrealism image that depicts this alarming news article:\n\n"
         )
         dalle_prompt += scene["news_summary"] + "\n\n" + scene["scene_text"]
-        title: str = scene["scene_title"]
-        image_name = _str_to_filename(title)
-
-        response = litellm.image_generation(
-            model=CTHULHU_IMAGE_MODEL,  # e.g., "dall-e-3", "dall-e-2"
-            prompt=dalle_prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-            response_format="b64_json",
-        )
+        try:
+            response = _call_image_generation(dalle_prompt)
+        except ContentPolicyViolationError:
+            logger.warning(
+                f"Content policy violation for scene {scene['scene_number']}, retrying with a safer prompt"
+            )
+            dalle_prompt += "\n\nEnsure content is appropriate and non-graphic."
+            response = _call_image_generation(dalle_prompt)
         assert response.data is not None, "response is None"
         if hasattr(response.data[0], "revised_prompt"):
             revised_prompt = response.data[0].revised_prompt
             logger.debug(f"{revised_prompt=}")
+
         img_json = response.data[0].b64_json
         assert img_json is not None
         img_bytes = base64.b64decode(img_json)
 
+        title: str = scene["scene_title"]
+        image_name = _str_to_filename(title)
         image_filename = f"{image_name}.png"
         with open(CTHULHU_IMAGE_DIR / image_filename, "wb") as f:
             f.write(img_bytes)
 
-        # doc["cthulhu_image"] = img_bytes
         scene["image_meta"].update(
             {
                 "cthulhu_image_prompt": dalle_prompt,
