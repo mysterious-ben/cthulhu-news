@@ -83,8 +83,25 @@ docker-compose*
 # Project specific
 drafts/
 .claude/
+setup_embeddings.py
+
+# Logs
+logs/
+**/logs/
+
+# Database data directories (Docker volumes handle these)
+mongo/
+pg/
 
 # Data
 data/
 **/data/
 **/mongodb.tar
+
+# Lock files
+uv.lock
+
+# Temporary/cache files
+**/*.tmp
+**/*.cache
+**/.DS_Store
