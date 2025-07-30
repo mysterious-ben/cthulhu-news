@@ -336,22 +336,25 @@ def generate_cthulhu_news(
             scenes=scenes_so_far,
         )
 
-        factcheck_prompt = prompts.create_factcheck_story_prompt(
-            text=scene["scene_text"],
-            facts=relevant_context,
-        )
-        response_json = get_llm_json_response(
-            gpt_role=prompts.factcheck_story_role_prompt,
-            gpt_query=factcheck_prompt,
-            gpt_model=gpt_model_writer,
-            gpt_max_tokens=gpt_writer_max_tokens,
-        )
-        factcheck_json = _parse_llm_json_response(
-            expected_fields=prompts.factcheck_story_expected_json_fields,
-            response_json=response_json,
-            raise_on_error=True,
-        )
-        scene["scene_text"] = factcheck_json["revised_story"]
+        if len(relevant_context) > 0:
+            factcheck_prompt = prompts.create_factcheck_story_prompt(
+                text=scene["scene_text"],
+                facts=relevant_context,
+            )
+            response_json = get_llm_json_response(
+                gpt_role=prompts.factcheck_story_role_prompt,
+                gpt_query=factcheck_prompt,
+                gpt_model=gpt_model_writer,
+                gpt_max_tokens=gpt_writer_max_tokens,
+            )
+            factcheck_json = _parse_llm_json_response(
+                expected_fields=prompts.factcheck_story_expected_json_fields,
+                response_json=response_json,
+                raise_on_error=True,
+            )
+            scene["scene_text"] = factcheck_json["revised_story"]
+        else:
+            scene["scene_text"] = scene["scene_text"]
 
         summary_prompt = prompts.create_story_summary_prompt(scenes=scenes_so_far + [scene])
         response_json = get_llm_json_response(

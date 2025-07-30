@@ -777,12 +777,10 @@ FACTS:
 
 
 def create_factcheck_story_prompt(text: str, facts: list[str]) -> str:
-    if len(facts) == 0:
-        return text
-    else:
-        return _factcheck_story_prompt.format(
-            story=text, facts="\n".join([f"- {f}" for f in facts])
-        )
+    assert len(facts) > 0
+    return _factcheck_story_prompt.format(
+        story=text, facts="\n".join([f"- {f}" for f in facts])
+    )
 
 
 factcheck_story_expected_json_fields = {
