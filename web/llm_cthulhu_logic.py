@@ -292,7 +292,7 @@ def generate_cthulhu_news(
     curr_win_counters = sum_scene_counters([a["scene_counters"] for a in scenes_so_far])
 
     for news_article, timestamp in zip(news_articles, timestamps, strict=False):
-        if scenes_so_far[-1]["scene_ends_story"]:
+        if (len(scenes_so_far) > 0) and scenes_so_far[-1]["scene_ends_story"]:
             logger.info("the story has already ended (skip creating a new scene)...")
             return []
 
