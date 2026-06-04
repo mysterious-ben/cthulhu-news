@@ -4,20 +4,19 @@
 
 import itertools
 from collections.abc import Iterable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pymongo
 
 # from dateutil import parser  # type: ignore
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
-from loguru import logger
-from logutil import init_loguru
 
 import web.db_utils as dbu
 import web.mapping as mapping
 from prefect import flow, task
 from prefect.schedules import Cron
+from shared.log_utils import logger, setup_logging
 from shared.paths import CTHULHU_IMAGE_DIR, WEB_ETL_LOG_PATH
 from web.llm_cthulhu_logic import add_cthulhu_images, generate_cthulhu_news
 
@@ -36,7 +35,7 @@ MONGO_NEWS_DB = "news"
 MONGO_NEWS_COLLECTION = "gnews"
 CTHULHU_IMAGE_MODEL = "dall-e-3"
 
-init_loguru(file_path=str(WEB_ETL_LOG_PATH))
+setup_logging(WEB_ETL_LOG_PATH)
 logger.debug(f"CTHULHU_IMAGE_DIR={CTHULHU_IMAGE_DIR.absolute()}")
 
 
@@ -127,7 +126,7 @@ def create_and_upload_cthulhu_article(
         raise ValueError(f"Expected 1 news article, got {len(news_articles)}")
     elif news_articles[0]["title"] in news_titles:
         raise ValueError(f"News article with title '{news_articles[0]['title']}' already exists.")
-    to_or_now = to_ if to_ is not None else datetime.now(tz=timezone.utc)
+    to_or_now = to_ if to_ is not None else datetime.now(tz=UTC)
     new_cthulhu_articles = generate_cthulhu_news(cthulhu_articles, news_articles, [to_or_now])
     add_cthulhu_images(new_cthulhu_articles)
     # TODO: fix unique constraint violation (title)
@@ -166,7 +165,7 @@ def update_cthulhu_articles(
         dbu.upd_all_counters()
         logger.info("updated all counters after news update")
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     lookback_delta = timedelta(seconds=NEWS_LOOKBACK_WINDOW_SECONDS)
     latest = dbu.latest_scene_timestamp()
     if latest is None:
@@ -180,7 +179,7 @@ def update_cthulhu_articles(
         n_days = min(n_days, NEWS_FILL_MAX_WINDOW_DAYS)
         dates = [latest.date() + timedelta(days=x) for x in range(n_days)]
         timestamps = [
-            datetime(d.year, d.month, d.day, h, tzinfo=timezone.utc)
+            datetime(d.year, d.month, d.day, h, tzinfo=UTC)
             for d, h in itertools.product(dates, NEWS_UPDATE_HOURS_PARSED)
         ]
         timestamps = [x for x in timestamps if (x > latest + lookback_delta) and (x < now)]

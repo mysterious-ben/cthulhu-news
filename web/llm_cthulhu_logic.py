@@ -8,11 +8,11 @@ import numpy as np
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from litellm.exceptions import ContentPolicyViolationError
-from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 import web.llm_cthulhu_prompts as prompts
 from shared.llm_utils import get_llm_json_response
+from shared.log_utils import logger
 from shared.paths import CTHULHU_IMAGE_DIR
 from web.mapping import EMBEDDING_VECTOR_SIZE, NewsArticle, Scene, WinCounters
 

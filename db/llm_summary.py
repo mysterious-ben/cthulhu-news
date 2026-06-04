@@ -1,9 +1,9 @@
 import litellm
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
-from loguru import logger
 
 from shared.llm_utils import get_llm_json_response
+from shared.log_utils import logger
 
 load_dotenv(find_dotenv())
 

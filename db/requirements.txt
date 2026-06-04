@@ -229,8 +229,6 @@ jsonschema-specifications==2025.9.1
 litellm==1.87.0
     # via cthulhu-news
 loguru==0.7.3
-    # via logutil
-logutil==0.1.11
     # via cthulhu-news
 lxml==6.1.1
     # via

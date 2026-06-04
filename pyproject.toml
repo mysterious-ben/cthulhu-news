@@ -11,7 +11,7 @@ dependencies = [
     "python-dateutil>=2.9.0",
     "python-dotenv>=1.2.0",
     "envparse>=0.2.0",
-    "logutil[loguru]>=0.1.11",
+    "loguru>=0.7.3",
     "httpx>=0.28.1",
     "pymongo>=4.17.0",
     "openai>=2.40.0",
@@ -111,6 +111,9 @@ markers = [
 ]
 testpaths = [
     "tests",
+]
+pythonpath = [
+    ".",
 ]
 
 [tool.mypy]

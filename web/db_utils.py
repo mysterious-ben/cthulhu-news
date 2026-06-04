@@ -6,7 +6,6 @@ from functools import partial
 import psycopg
 import psycopg.sql as sql
 from envparse import env
-from loguru import logger
 from pgvector.psycopg import register_vector
 
 # from psycopg_pool import AsyncConnectionPool
@@ -16,6 +15,7 @@ from psycopg_pool import ConnectionPool
 import web.llm_cthulhu_logic as logic
 import web.llm_cthulhu_prompts as prompts
 import web.mapping as mapping
+from shared.log_utils import logger
 
 POSTGRES_HOST = env.str("POSTGRES_HOST")
 POSTGRES_PORT = env.int("POSTGRES_PORT")

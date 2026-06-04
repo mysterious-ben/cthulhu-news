@@ -1,7 +1,8 @@
 import json
 
 import litellm
-from loguru import logger
+
+from shared.log_utils import logger
 
 
 # @retry(stop=stop_after_attempt(2), wait=wait_fixed(1.0))

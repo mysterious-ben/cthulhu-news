@@ -4,7 +4,7 @@
 
 import json
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 # import click
@@ -14,13 +14,12 @@ import nltk
 import pymongo
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
-from loguru import logger
-from logutil import init_loguru
 from pymongo.errors import BulkWriteError
 
 from db.llm_summary import add_gpt_info
 from prefect import flow, task
 from prefect.schedules import Interval
+from shared.log_utils import logger, setup_logging
 from shared.paths import DB_ETL_LOG_PATH
 
 load_dotenv(find_dotenv())
@@ -41,7 +40,7 @@ NEWS_QUERIES = ["finance", "energy", "weather", "murders", "funny"]
 NEWS_QUERY_EVERY_X_SECONDS = env.int("NEWS_QUERY_EVERY_X_SECONDS")
 NEWS_QUERY_WINDOW_EXTENSION_SECONDS = env.int("NEWS_QUERY_WINDOW_EXTENSION_SECONDS")
 
-init_loguru(file_path=str(DB_ETL_LOG_PATH))
+setup_logging(DB_ETL_LOG_PATH)
 logger.info("downloadeding nltk punkt...")
 # nltk.download("punkt", download_dir=NLTK_DOWNLOADS_DIR, quiet=True, raise_on_error=True)
 nltk.download("punkt", raise_on_error=True)
@@ -186,7 +185,7 @@ def load_news_task(query, from_, to_=None):
 def load_all_recent_news_flow():
     """Load all recent news articles, add a GPT summary and save to the local db"""
 
-    time_now = datetime.now(tz=timezone.utc)
+    time_now = datetime.now(tz=UTC)
     time_from = time_now - timedelta(
         seconds=NEWS_QUERY_EVERY_X_SECONDS + NEWS_QUERY_WINDOW_EXTENSION_SECONDS
     )
@@ -203,7 +202,7 @@ def start_news_etl_with_serve():
     logger.info("serving the normal news ETL...")
     schedule = Interval(
         timedelta(seconds=NEWS_QUERY_EVERY_X_SECONDS),
-        anchor_date=datetime.now(tz=timezone.utc) + timedelta(seconds=5),
+        anchor_date=datetime.now(tz=UTC) + timedelta(seconds=5),
     )
     load_all_recent_news_flow.serve(
         name="news-etl-deployment",

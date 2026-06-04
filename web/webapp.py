@@ -12,13 +12,12 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from loguru import logger
-from logutil import init_loguru
 from PIL import Image
 
 import web.db_utils as dbu
 import web.llm_cthulhu_logic as logic
 import web.mapping as mapping
+from shared.log_utils import logger, setup_logging
 from shared.paths import CTHULHU_IMAGE_DIR, HTML_STATIC_DIR, TEMPLATES_DIR, WEB_APP_LOG_PATH
 
 load_dotenv(find_dotenv())
@@ -41,7 +40,7 @@ app.mount(
     name="static",
 )
 
-init_loguru(file_path=str(WEB_APP_LOG_PATH))
+setup_logging(WEB_APP_LOG_PATH)
 logger.debug(f"HTML_STATIC_DIR={HTML_STATIC_DIR.absolute()}")
 
 
