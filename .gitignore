@@ -9,6 +9,7 @@
 # Claude
 .claude
 CLAUDE.md
+docs/superpowers
 
 # Python version and packages
 venv/
