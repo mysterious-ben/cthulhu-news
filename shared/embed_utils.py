@@ -13,8 +13,8 @@ load_dotenv(find_dotenv())
 EMBEDDING_BACKEND = env.str("EMBEDDING_BACKEND", default="local")
 EMBEDDING_MODEL = env.str("EMBEDDING_MODEL", default="sentence-transformers/all-MiniLM-L6-v2")
 EMBEDDING_VECTOR_SIZE = env.int("EMBEDDING_VECTOR_SIZE", default=384)
+EMBEDDING_MAX_INPUT_LENGTH = env.int("EMBEDDING_MAX_INPUT_LENGTH", default=2000)
 EMBEDDING_CACHE_DIR = env.str("EMBEDDING_CACHE_DIR", default=None)
-EMBEDDING_MAX_INPUT_LENGTH = env.int("EMBEDDING_MAX_INPUT_LENGTH", default=10000)
 EPS = 1e-4
 
 
