@@ -128,8 +128,9 @@ async def news_main_page(request: Request):
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
     total_counters = dbu.get_total_counters()
     response = templates.TemplateResponse(
+        request,
         "news_main_page.html",
-        {"request": request, "news_articles": html_articles, "counters": total_counters},
+        {"news_articles": html_articles, "counters": total_counters},
     )
 
     elapsed = (datetime.now() - start).total_seconds()
@@ -158,7 +159,7 @@ async def news_article_page(request: Request, scene_number: int):
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
 
     response = templates.TemplateResponse(
-        "news_article.html", {"request": request, "article": html_articles[0]}
+        request, "news_article.html", {"article": html_articles[0]}
     )
     elapsed = (datetime.now() - start).total_seconds()
     logger.info(f"prepared the article page elapsed={elapsed:.2f}s")
@@ -229,6 +230,6 @@ async def submit_comment(
     html_articles = _prepare_news_articles_for_html(cthulhu_articles)
     article = html_articles[0]
 
-    context = {"request": request, "article": article, "comment_just_submitted": True}
+    context = {"article": article, "comment_just_submitted": True}
     logger.info(f"commented the article scene_number={scene_number} comment='{comment[:15]}'")
-    return templates.TemplateResponse("comments.html", context)
+    return templates.TemplateResponse(request, "comments.html", context)

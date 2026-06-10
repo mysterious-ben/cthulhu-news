@@ -15,6 +15,7 @@ from psycopg_pool import ConnectionPool
 import web.llm_cthulhu_logic as logic
 import web.llm_cthulhu_prompts as prompts
 import web.mapping as mapping
+from shared.embed_utils import generate_embedding_vector
 from shared.log_utils import logger
 
 POSTGRES_HOST = env.str("POSTGRES_HOST")
@@ -23,7 +24,6 @@ POSTGRES_DB = env.str("POSTGRES_DB")
 POSTGRES_USER = env.str("POSTGRES_USER")
 POSTGRES_PASSWORD = env.str("POSTGRES_PASSWORD")
 POSTGRES_CONN_STR = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-
 
 # apgpool = AsyncConnectionPool(
 #     POSTGRES_CONN_STR,
@@ -439,7 +439,7 @@ def regenerate_all_embeddings() -> None:
 
     for i, article in enumerate(articles):
         try:
-            embedding = logic.generate_embedding_vector(article["scene_text"])
+            embedding = generate_embedding_vector(article["scene_text"])
             with _pgpool.connection() as conn:
                 conn.execute(
                     "UPDATE news SET scene_vector = %s::vector WHERE scene_number = %s",

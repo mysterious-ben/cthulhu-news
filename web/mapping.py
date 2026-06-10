@@ -3,8 +3,12 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 import numpy as np
+from dotenv import find_dotenv, load_dotenv
+from envparse import env
 
-EMBEDDING_VECTOR_SIZE = 384
+load_dotenv(find_dotenv())
+
+EMBEDDING_VECTOR_SIZE = env.int("EMBEDDING_VECTOR_SIZE", default=384)
 
 
 def _is_valid_sql_column(s):
@@ -117,7 +121,7 @@ sql_table_columns: dict[str, str] = {
     "scene_title": "TEXT NOT NULL",
     "scene_text": "TEXT NOT NULL",
     "scene_updates": "TEXT[] NOT NULL DEFAULT '{}'::TEXT[]",
-    "scene_vector": "VECTOR(384)",
+    "scene_vector": f"VECTOR({EMBEDDING_VECTOR_SIZE}) NOT NULL",
     "story_summary": "TEXT NOT NULL",
     "scene_ends_story": "BOOLEAN NOT NULL",
     "scene_older_versions": "JSONB NOT NULL",

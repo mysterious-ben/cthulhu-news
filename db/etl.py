@@ -185,6 +185,7 @@ def load_news_task(query, from_, to_=None):
 def load_all_recent_news_flow():
     """Load all recent news articles, add a GPT summary and save to the local db"""
 
+    logger.info("loading news articles")
     time_now = datetime.now(tz=UTC)
     time_from = time_now - timedelta(
         seconds=NEWS_QUERY_EVERY_X_SECONDS + NEWS_QUERY_WINDOW_EXTENSION_SECONDS

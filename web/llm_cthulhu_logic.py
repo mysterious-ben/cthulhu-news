@@ -8,9 +8,9 @@ import numpy as np
 from dotenv import find_dotenv, load_dotenv
 from envparse import env
 from litellm.exceptions import ContentPolicyViolationError
-from sentence_transformers import SentenceTransformer
 
 import web.llm_cthulhu_prompts as prompts
+from shared.embed_utils import generate_embedding_vector
 from shared.llm_utils import get_llm_json_response
 from shared.log_utils import logger
 from shared.paths import CTHULHU_IMAGE_DIR
@@ -28,9 +28,6 @@ CTHULHU_IMAGE_MODEL = "dall-e-3"
 MAX_SCENE_UPDATES = 5
 
 litellm.openai_key = OPENAI_API_KEY
-
-
-_embedding_model = None
 
 
 def _str_to_filename(string: str) -> str:
@@ -215,31 +212,6 @@ def sum_scene_counters(
         for group, counter in counters.items():
             total_counters[group] += counter
     return total_counters
-
-
-def get_embedding_model() -> SentenceTransformer:
-    """Get or load the embedding model."""
-    global _embedding_model
-    if _embedding_model is None:
-        logger.info("Loading sentence-transformers model")
-        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-        logger.info("Embedding model loaded")
-    return _embedding_model
-
-
-def generate_embedding_vector(text: str) -> np.ndarray:
-    """Generate embedding vector for the given text."""
-    text = text.strip()
-    if len(text) == 0:
-        logger.warning("Empty text provided for embedding generation")
-        return np.zeros(EMBEDDING_VECTOR_SIZE, dtype=np.float32)
-    if len(text) > 1000:
-        logger.warning(f"Text for embedding is long length={len(text)}")
-
-    model = get_embedding_model()
-    embedding = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
-    embedding = embedding.astype(np.float32)
-    return embedding
 
 
 def find_story_context(

@@ -15,7 +15,6 @@ dependencies = [
     "httpx>=0.28.1",
     "pymongo>=4.17.0",
     "openai>=2.40.0",
-    # "qdrant-client[fastembed]>=1.6.9",  # uncomment if needed
     "pillow>=12.2.0",
     "python-multipart>=0.0.30",
     "spacy>=3.8.0",
@@ -38,8 +37,7 @@ web = [
     "psycopg[pool]>=3.3.0",
     "uvicorn[standard]>=0.48.0",
     "pgvector>=0.4.0",
-    "sentence-transformers>=5.5.0",
-    "torch>=2.12.0"
+    "fastembed>=0.8.0"
 ]
 dev = [
     "pylint>=4.0.0",

@@ -11,6 +11,10 @@
 CLAUDE.md
 docs/superpowers
 
+# Codex
+.codex
+AGENTS.md
+
 # Python version and packages
 venv/
 .venv/
@@ -29,6 +33,7 @@ __pycache__/
 # App generated files: Data
 web/data/*
 !web/data/.gitkeep
+web/.fastembed_cache/
 db/data/*
 !db/data/.gitkeep
 mongo/data/*

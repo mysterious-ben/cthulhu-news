@@ -83,7 +83,7 @@ docker-compose*
 # Project specific
 drafts/
 .claude/
-setup_embeddings.py
+.codex/
 
 # Logs
 logs/

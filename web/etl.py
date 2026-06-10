@@ -161,6 +161,7 @@ def update_cthulhu_articles(
 ) -> None:
     """Wrapper function to create and upload multiple Cthulhu articles."""
 
+    logger.info("updating Cthulhu articles...")
     if update_counters:
         dbu.upd_all_counters()
         logger.info("updated all counters after news update")

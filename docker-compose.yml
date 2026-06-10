@@ -1,7 +1,7 @@
 services:
   mongo:
     restart: unless-stopped
-    image: mongo:8
+    image: mongo:8.0
     container_name: cthulhu-mongo
     ports:
       - "${MONGO_PORT:-27017}:27017"
@@ -151,12 +151,14 @@ services:
       - ./logs:/app/logs
       - ./web/data:/app/web/data
       - ./web/static:/app/web/static
+      - ./web/.fastembed_cache:/app/.fastembed_cache
     environment:
       - PUID=1000
       - PGID=1000
       - MONGO_HOST=mongo
       - POSTGRES_HOST=postgres
       - PREFECT_API_URL=http://prefect-server:4200/api
+      - EMBEDDING_CACHE_DIR=/app/.fastembed_cache
     env_file:
       - .env
     entrypoint: ["python"]
@@ -183,12 +185,14 @@ services:
       - ./logs:/app/logs
       - ./web/data:/app/web/data
       - ./web/static:/app/web/static
+      - ./web/.fastembed_cache:/app/.fastembed_cache
     environment:
       - PUID=1000
       - PGID=1000
       - MONGO_HOST=mongo
       - POSTGRES_HOST=postgres
       - UVICON_HOST=0.0.0.0
+      - EMBEDDING_CACHE_DIR=/app/.fastembed_cache
     env_file:
       - .env
     entrypoint: ["uvicorn"]
